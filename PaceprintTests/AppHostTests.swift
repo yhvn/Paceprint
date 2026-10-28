@@ -12,6 +12,6 @@ struct AppHostTests {
 
     @Test("The app links PaceprintCore")
     func linksCore() {
-        #expect(DistanceUnit.miles.metres == 1_609.344)
+        #expect(DistanceUnit.allCases.contains(.kilometers))
     }
 }

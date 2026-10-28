@@ -16,7 +16,7 @@ struct ContentView: View {
             VStack(spacing: 24) {
                 Text("PACEPRINT")
                     .font(Theme.Typography.label)
-                    .tracking(Theme.Typography.labelSize * 0.4)
+                    .tracking(Theme.Typography.wordmarkTracking)
                     .foregroundStyle(Theme.Colors.textSecondary)
 
                 VStack(alignment: .leading, spacing: 6) {

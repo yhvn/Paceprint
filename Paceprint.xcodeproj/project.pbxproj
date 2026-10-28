@@ -119,6 +119,7 @@
 			);
 			name = PaceprintTests;
 			packageProductDependencies = (
+				A9811C1B3091E5A400080CEC /* PaceprintCore */,
 			);
 			productName = PaceprintTests;
 			productReference = A9811C113091E5A400080CEC /* PaceprintTests.xctest */;
@@ -477,6 +478,10 @@
 
 /* Begin XCSwiftPackageProductDependency section */
 		A9811C023091E5A400080CEC /* PaceprintCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PaceprintCore;
+		};
+		A9811C1B3091E5A400080CEC /* PaceprintCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PaceprintCore;
 		};

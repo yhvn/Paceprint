@@ -4,7 +4,7 @@ public enum DistanceUnit: String, CaseIterable, Sendable {
     case miles
 
     /// Metres in one unit. Stored distances are always metres; this converts for display.
-    public var metres: Double {
+    public var metresPerUnit: Double {
         switch self {
         case .kilometers: 1_000
         case .miles: 1_609.344

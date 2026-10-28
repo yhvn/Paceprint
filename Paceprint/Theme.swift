@@ -45,7 +45,7 @@ enum Theme {
         // Route (default "pace" palette)
         static let paceFast = Color(hex: 0x4AE27A)
         static let paceMid = Color(hex: 0xFFE055)
-        static let paceSlow = Color(hex: 0xFF4D4D)
+        static let paceSlow = liveRed
         static let routeHalo = Color.white.opacity(0.18)
 
         // Surface
@@ -86,6 +86,8 @@ enum Theme {
         static let labelSize: CGFloat = 11
         static let label = Font.system(size: labelSize, weight: .semibold)
         static let labelTracking: CGFloat = labelSize * 0.2
+        /// The spaced-out PACEPRINT wordmark.
+        static let wordmarkTracking: CGFloat = labelSize * 0.4
 
         /// Place name headline on Summary.
         static let placeName = Font.system(size: 44, weight: .heavy)
