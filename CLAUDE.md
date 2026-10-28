@@ -1,10 +1,10 @@
-# Peacline
+# Paceprint
 
 ## Agent skills
 
 ### Issue tracker
 
-Issues are tracked in GitHub Issues (`tungdevpro/Peacline`, private) via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+Issues are tracked in GitHub Issues (`tungdevpro/Paceprint`, private) via the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
