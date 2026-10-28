@@ -47,3 +47,7 @@ _Avoid_: Remainder, last lap
 **Pace color**:
 The color on the pace gradient given to a stretch of Route, decided by how its Pace compares with the Run's Average pace.
 _Avoid_: Heat, intensity
+
+**Story card**:
+The 9:16 image of one Run, made to be shared: its photo or dark map, its Route in Pace colors, and its headline numbers.
+_Avoid_: Share image, export, poster
