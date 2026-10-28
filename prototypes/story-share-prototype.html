@@ -1,0 +1,289 @@
+<!doctype html>
+<!--
+  PROTOTYPE — throwaway. Answers "Composing and sharing the Story image"
+  (https://github.com/tungdevpro/Peacline/issues/11).
+  Three structurally different share flows on the Summary / Run detail screens,
+  switchable via ?variant=A|B|C and the floating bar (← → keys).
+  Open this file in a browser. Not production code.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Story share prototype</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #e9e7e3; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; color: #1b1b1b; min-height: 100vh; padding: 24px 16px 96px; }
+  .stage { display: flex; gap: 32px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
+  .col h2 { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: #6a6660; margin-bottom: 10px; font-weight: 700; }
+  .phone { width: 360px; height: 760px; border-radius: 48px; background: #000; padding: 10px; box-shadow: 0 30px 60px rgba(0,0,0,.25); }
+  .screen { position: relative; width: 100%; height: 100%; border-radius: 38px; overflow: hidden; background: #000; color: #fff; }
+  .panel { width: 340px; display: flex; flex-direction: column; gap: 18px; }
+  .card-out { width: 216px; height: 384px; border-radius: 10px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.2); }
+  .controls { background: #fff; border-radius: 14px; padding: 14px; display: grid; gap: 10px; font-size: 13px; }
+  .controls label { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .controls select { font: inherit; padding: 3px 6px; }
+  .state { background: #1b1b1b; color: #9ef0b4; border-radius: 14px; padding: 12px 14px; font: 11.5px/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap; min-height: 150px; }
+  .verdict { background: #fff7d6; border-radius: 14px; padding: 12px 14px; font-size: 12.5px; line-height: 1.45; }
+  .verdict b { display: block; margin-bottom: 4px; }
+
+  /* ---- app chrome (from design) ---- */
+  .lbl { font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: rgba(255,255,255,.65); }
+  .metric .v { font-weight: 800; color: #fff; line-height: .95; letter-spacing: -.02em; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .cbtn { appearance: none; border: .5px solid rgba(255,255,255,.18); border-radius: 50%; background: rgba(0,0,0,.45); backdrop-filter: blur(20px); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+  .pill { appearance: none; border: .5px solid rgba(255,255,255,.18); background: rgba(0,0,0,.45); backdrop-filter: blur(20px); color: #fff; height: 36px; padding: 0 14px; border-radius: 18px; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  .pill.primary { background: #fff; color: #111; border-color: #fff; }
+  .abs { position: absolute; }
+  .fill { position: absolute; inset: 0; }
+  .filters { position: absolute; left: 14px; right: 14px; bottom: 24px; display: flex; gap: 8px; }
+  .filters button { flex: 1; appearance: none; padding: 8px 4px 6px; border-radius: 12px; background: rgba(0,0,0,.45); border: .5px solid rgba(255,255,255,.15); color: rgba(255,255,255,.85); font-size: 9.5px; font-weight: 700; letter-spacing: .16em; cursor: pointer; }
+  .filters button.on { background: rgba(255,255,255,.95); color: #111; }
+
+  /* sheets */
+  .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.45); z-index: 20; display: flex; align-items: flex-end; }
+  .sheet { width: 100%; background: #1c1c1e; border-radius: 22px 22px 0 0; padding: 10px 16px 26px; color: #fff; }
+  .grabber { width: 36px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.3); margin: 0 auto 12px; }
+  .ios-sheet { background: #2c2c2e; }
+  .ios-head { display: flex; gap: 10px; align-items: center; padding-bottom: 12px; border-bottom: .5px solid rgba(255,255,255,.12); }
+  .ios-head .thumb { width: 42px; height: 75px; border-radius: 6px; overflow: hidden; flex: none; }
+  .apps { display: flex; gap: 14px; padding: 14px 0; overflow: hidden; }
+  .app { width: 58px; text-align: center; font-size: 10.5px; color: rgba(255,255,255,.85); cursor: pointer; }
+  .app i { display: block; width: 54px; height: 54px; border-radius: 13px; margin: 0 auto 6px; }
+  .actions { background: #3a3a3c; border-radius: 12px; overflow: hidden; }
+  .actions div { padding: 12px 14px; font-size: 14px; border-bottom: .5px solid rgba(255,255,255,.1); display: flex; justify-content: space-between; cursor: pointer; }
+  .actions div:last-child { border-bottom: none; }
+  .btn-row { display: flex; gap: 10px; margin-top: 14px; }
+  .bigbtn { flex: 1; appearance: none; border: none; height: 50px; border-radius: 14px; font-size: 15px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+  .bigbtn.ig { background: linear-gradient(90deg,#f9ce34,#ee2a7b,#6228d7); color: #fff; }
+  .bigbtn.sec { background: #3a3a3c; color: #fff; }
+  .ig-composer { position: absolute; inset: 0; z-index: 30; background: #000; }
+  .toast { position: absolute; left: 50%; top: 60px; transform: translateX(-50%); background: rgba(255,255,255,.95); color: #111; padding: 8px 14px; border-radius: 18px; font-size: 12.5px; font-weight: 600; z-index: 40; white-space: nowrap; }
+
+  /* floating switcher (not part of the design) */
+  .switcher { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: #111; color: #fff; border-radius: 999px; padding: 6px; display: flex; align-items: center; gap: 6px; box-shadow: 0 10px 30px rgba(0,0,0,.35); z-index: 100; font-size: 13px; outline: 2px dashed #ffcf33; outline-offset: 3px; }
+  .switcher button { appearance: none; border: none; background: #2b2b2b; color: #fff; width: 34px; height: 34px; border-radius: 50%; font-size: 16px; cursor: pointer; }
+  .switcher span { padding: 0 10px; font-weight: 600; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="col">
+    <h2 id="phoneTitle">App</h2>
+    <div class="phone"><div class="screen" id="screen"></div></div>
+  </div>
+  <div class="col panel">
+    <div>
+      <h2>Exported card · 1080×1920 (shown at 20%)</h2>
+      <div class="card-out" id="cardOut"></div>
+    </div>
+    <div class="controls">
+      <label>Screen <select id="cScreen"><option value="summary">Summary (just finished)</option><option value="detail">Run detail (from History)</option></select></label>
+      <label>Background <select id="cPhoto"><option value="photo">Photo picked</option><option value="map">No photo → dark map</option></select></label>
+      <label>Instagram installed <input type="checkbox" id="cIG" checked></label>
+      <label>Route palette <select id="cPal"><option>pace</option><option>electric</option><option>ember</option><option>mono</option></select></label>
+    </div>
+    <div class="verdict" id="verdict"></div>
+    <div><h2>State</h2><div class="state" id="state"></div></div>
+  </div>
+</div>
+<div class="switcher"><button id="prev" title="Previous (←)">←</button><span id="vlabel"></span><button id="next" title="Next (→)">→</button></div>
+
+<script>
+// ---------- data (ported from the design's sample run) ----------
+function rng(seed){ let s=seed>>>0; return ()=>{ s=(s*1664525+1013904223)>>>0; return s/0xffffffff; }; }
+function makeRoute(seed){
+  const r=rng(seed), w=[]; let x=20+r()*12, y=78+r()*8; w.push([x,y]);
+  for(let i=0;i<8;i++){ const a=-Math.PI/2+(r()-.5)*Math.PI*1.2, st=12+r()*10; x=Math.max(8,Math.min(92,x+Math.cos(a)*st)); y=Math.max(8,Math.min(86,y+Math.sin(a)*st)); w.push([x,y]); }
+  const d=[]; for(let i=0;i<w.length-1;i++){ const p0=w[Math.max(0,i-1)],p1=w[i],p2=w[i+1],p3=w[Math.min(w.length-1,i+2)];
+    for(let j=0;j<12;j++){ const t=j/12,t2=t*t,t3=t2*t; const f=k=>.5*((2*p1[k])+(-p0[k]+p2[k])*t+(2*p0[k]-5*p1[k]+4*p2[k]-p3[k])*t2+(-p0[k]+3*p1[k]-3*p2[k]+p3[k])*t3); d.push([f(0),f(1)]); } }
+  d.push(w[w.length-1]);
+  return d.map(([x,y],i)=>{ const u=i/(d.length-1); const b=.45+.35*Math.sin(u*Math.PI*3+r()*.3); return {x,y,pace:Math.max(.05,Math.min(.95,b+(r()-.5)*.15+u*.1))}; });
+}
+const RUN = { city:'BROOKLYN', hood:'Dumbo · Brooklyn Bridge Park', date:'TUE · MAY 12 · 6:42 AM', km:'5.42', time:'28:14', pace:'5:12', cal:'340', route: makeRoute(7) };
+const PALS = { pace:['#4AE27A','#FFE055','#FF4D4D'], electric:['#00F0FF','#A78BFA','#FF3DA5'], ember:['#FFD66B','#FF8A3D','#E0345B'], mono:['#FFFFFF','#B8B8B8','#5A5A5A'] };
+const FILTERS = { none:'none', chroma:'saturate(1.3) contrast(1.05)', noir:'saturate(0) contrast(1.15) brightness(.85)', dusk:'sepia(.3) saturate(1.1) hue-rotate(-10deg)', film:'contrast(1.1) saturate(.85) brightness(.95)' };
+const hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+function paceColor(p,pal){ const [a,b,c]=PALS[pal].map(hex); const L=(u,v,t)=>u.map((x,i)=>x+(v[i]-x)*t|0); const col=p<.5?L(a,b,p/.5):L(b,c,(p-.5)/.5); return `rgb(${col})`; }
+
+// ---------- state ----------
+const VARIANTS = { A:'Preview sheet', B:'One tap to Stories', C:'Share sheet only' };
+const VERDICT = {
+  A:'<b>A · Preview sheet</b>Share opens a sheet showing the exact 9:16 card. The filter can still be changed there. Two buttons: Instagram Stories (primary) and More… (system share sheet). One extra tap, and nothing surprising.',
+  B:'<b>B · One tap to Stories</b>No preview: Summary already looks like the card. A STORY pill jumps straight into Instagram. A separate share icon opens the system sheet. Fewest taps, but the user never sees the 9:16 crop before sharing.',
+  C:'<b>C · Share sheet only</b>One Share button opens the iOS share sheet with the card attached. "Share to Instagram Story" is a custom action at the top of the list. One familiar entry point, but Stories sits one level down and looks like every other app.',
+};
+const S = { variant: new URLSearchParams(location.search).get('variant') || 'A', screen:'summary', photo:'photo', filter:'dusk', ig:true, pal:'pace', overlay:null, log:[] };
+if(!VARIANTS[S.variant]) S.variant='A';
+function log(m){ S.log.unshift(m); S.log=S.log.slice(0,6); }
+
+// ---------- card + backgrounds ----------
+function bgHTML(){
+  if(S.photo==='map') return `<svg class="fill" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice"><defs><radialGradient id="mg" cx="50%" cy="55%" r="65%"><stop offset="0" stop-color="#1a2530"/><stop offset=".6" stop-color="#0f161e"/><stop offset="1" stop-color="#070a0e"/></radialGradient></defs><rect width="100" height="100" fill="url(#mg)"/><path d="M-5 46 C20 34,50 56,105 50 L105 68 C60 78,30 50,-5 62Z" fill="#0a1822"/>${Array.from({length:14},(_,i)=>`<line x1="0" y1="${5+i*7}" x2="100" y2="${5+i*7}" stroke="rgba(255,255,255,.06)" stroke-width=".35"/>`).join('')}${Array.from({length:11},(_,i)=>`<line y1="0" x1="${3+i*9}" y2="100" x2="${3+i*9}" stroke="rgba(255,255,255,.06)" stroke-width=".35"/>`).join('')}<line x1="0" y1="24" x2="100" y2="24" stroke="rgba(255,200,140,.12)" stroke-width=".7"/></svg>`;
+  return `<div class="fill" style="background:linear-gradient(180deg,#1a2540 0%,#5a4068 45%,#c47a5a 85%,#f0c08a 100%);filter:${FILTERS[S.filter]}"></div>`;
+}
+function routeSVG(w){
+  const r=RUN.route, pts=r.map(p=>`${p.x},${p.y}`).join(' ');
+  let segs=''; for(let i=1;i<r.length;i++){ const a=r[i-1],b=r[i]; segs+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${paceColor((a.pace+b.pace)/2,S.pal)}" stroke-width="${w}" stroke-linecap="round"/>`; }
+  const s=r[0], e=r[r.length-1], d=2.2;
+  return `<svg class="fill" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice"><polyline points="${pts}" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="${w+6}" stroke-linecap="round" stroke-linejoin="round"/>${segs}<circle cx="${s.x}" cy="${s.y}" r="${d*1.3}" fill="#fff"/><circle cx="${s.x}" cy="${s.y}" r="${d*.85}" fill="#FF4D4D"/><circle cx="${e.x}" cy="${e.y}" r="${d*1.3}" fill="#fff"/><circle cx="${e.x}" cy="${e.y}" r="${d*.85}" fill="#4AE27A"/></svg>`;
+}
+const metric=(l,v,ls,vs)=>`<div class="metric"><div class="lbl" style="font-size:${ls}px">${l}</div><div class="v" style="font-size:${vs}px">${v}</div></div>`;
+// The Story card at a 360×640 base; callers scale it.
+function cardHTML(){
+  return `<div style="position:relative;width:360px;height:640px;overflow:hidden;background:#000;color:#fff">
+    ${bgHTML()}
+    <div class="fill" style="background:linear-gradient(180deg,rgba(0,0,0,.55) 0%,rgba(0,0,0,.05) 35%,rgba(0,0,0,.15) 60%,rgba(0,0,0,.92) 100%)"></div>
+    ${routeSVG(1.8)}
+    <div class="abs lbl" style="top:28px;left:0;right:0;text-align:center;font-size:10px;letter-spacing:.45em;color:rgba(255,255,255,.85)">PACELINE</div>
+    <div class="abs" style="top:36%;left:22px;right:22px;transform:translateY(-50%)">
+      <div class="lbl" style="font-size:9px;letter-spacing:.32em;color:rgba(255,255,255,.7)">${RUN.hood}</div>
+      <div style="font-size:52px;font-weight:800;letter-spacing:-.03em;margin-top:8px;line-height:.95;text-shadow:0 4px 24px rgba(0,0,0,.45)">${RUN.city}</div>
+      <div class="lbl" style="font-size:9px;margin-top:10px">${RUN.date}</div>
+    </div>
+    <div class="abs" style="left:22px;right:22px;bottom:48px;display:grid;grid-template-columns:1fr 1fr;row-gap:20px;column-gap:16px">
+      ${metric('KM',RUN.km,10,44)}${metric('TIME',RUN.time,10,44)}${metric('AVG PACE /KM',RUN.pace,9.5,30)}${metric('CAL (EST)',RUN.cal,9.5,30)}
+    </div>
+    <div class="abs lbl" style="bottom:20px;left:0;right:0;text-align:center;font-size:8px;letter-spacing:.3em;color:rgba(255,255,255,.45)">SHARED VIA PACELINE</div>
+  </div>`;
+}
+const scaledCard=(w)=>`<div style="width:${w}px;height:${w*16/9}px;overflow:hidden"><div style="transform:scale(${w/360});transform-origin:0 0">${cardHTML()}</div></div>`;
+
+// ---------- icons ----------
+const I = {
+  share:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 15V3M7 8l5-5 5 5M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/></svg>',
+  close:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  back:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  ig:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor"/></svg>',
+};
+
+// ---------- top-bar share affordance per variant ----------
+function shareControls(){
+  if(S.variant==='B') return `<div style="display:flex;gap:8px">${S.ig?`<button class="pill primary" data-act="ig-direct">${I.ig} Story</button>`:''}<button class="cbtn" style="width:36px;height:36px" data-act="sys-sheet">${I.share}</button></div>`;
+  return `<button class="cbtn" style="width:36px;height:36px" data-act="share">${I.share}</button>`;
+}
+
+// ---------- screens ----------
+function summaryHTML(){
+  return `${bgHTML()}
+  <div class="fill" style="background:linear-gradient(180deg,rgba(0,0,0,.6) 0%,rgba(0,0,0,.15) 30%,rgba(0,0,0,.2) 60%,rgba(0,0,0,.85) 100%)"></div>
+  ${routeSVG(2.2)}
+  <div class="abs" style="top:46px;left:16px;right:16px;display:flex;align-items:center;justify-content:space-between">
+    <button class="cbtn" style="width:36px;height:36px" data-act="noop">${I.close}</button>
+    <div class="lbl" style="font-size:10px;letter-spacing:.4em;color:rgba(255,255,255,.8)">PACELINE</div>
+    ${shareControls()}
+  </div>
+  <div class="abs" style="top:40%;left:22px;right:22px;transform:translateY(-50%)">
+    <div class="lbl" style="font-size:10px;letter-spacing:.3em;color:rgba(255,255,255,.7)">${RUN.hood}</div>
+    <div style="font-size:44px;font-weight:800;letter-spacing:-.025em;margin-top:6px;line-height:1;text-shadow:0 2px 12px rgba(0,0,0,.4)">${RUN.city}</div>
+    <div class="lbl" style="font-size:10px;margin-top:8px">${RUN.date}</div>
+  </div>
+  <div class="abs" style="left:22px;right:22px;bottom:140px;display:grid;grid-template-columns:1fr 1fr;row-gap:22px;column-gap:18px">
+    ${metric('KM',RUN.km,11,52)}${metric('TIME',RUN.time,11,52)}${metric('AVG PACE /KM',RUN.pace,10,40)}${metric('CAL (EST)',RUN.cal,10,40)}
+  </div>
+  ${filterStrip()}`;
+}
+function filterStrip(inline){
+  if(S.photo==='map') return inline?'':`<div class="filters" style="justify-content:center"><div class="lbl" style="font-size:9.5px;padding:12px">No photo · pick one to use filters</div></div>`;
+  return `<div class="filters" ${inline?'style="position:static;margin-top:12px"':''}>${Object.keys(FILTERS).map(f=>`<button class="${S.filter===f?'on':''}" data-filter="${f}">${f.toUpperCase()}</button>`).join('')}</div>`;
+}
+function detailHTML(){
+  const rows=[['KM 1','5:01'],['KM 2','5:09'],['KM 3','5:22'],['KM 4','5:18'],['KM 5','5:07'],['0.42 KM','5:14']];
+  return `<div class="fill" style="background:#0a0d12"></div>
+  <div class="abs" style="top:0;left:0;right:0;height:330px">${bgHTML()}<div class="fill" style="background:linear-gradient(180deg,rgba(0,0,0,.55) 0%,rgba(0,0,0,.1) 40%,#0a0d12 100%)"></div>${routeSVG(2.2)}</div>
+  <div class="abs" style="top:46px;left:16px;right:16px;display:flex;align-items:center;justify-content:space-between;z-index:5">
+    <button class="cbtn" style="width:36px;height:36px" data-act="noop">${I.back}</button>
+    <div class="lbl" style="font-size:10px;letter-spacing:.4em;color:rgba(255,255,255,.8)">RUN DETAIL</div>
+    ${shareControls()}
+  </div>
+  <div class="abs" style="top:220px;left:20px;right:20px">
+    <div class="lbl" style="font-size:9.5px;color:rgba(255,255,255,.6)">${RUN.hood}</div>
+    <div style="font-size:36px;font-weight:800;letter-spacing:-.025em;margin-top:4px;line-height:1">${RUN.city}</div>
+    <div class="lbl" style="font-size:9.5px;margin-top:8px;color:rgba(255,255,255,.55)">${RUN.date}</div>
+    <div style="margin-top:24px;display:grid;grid-template-columns:1fr 1fr;row-gap:20px;column-gap:18px">${metric('KM',RUN.km,10,40)}${metric('TIME',RUN.time,10,40)}${metric('AVG PACE /KM',RUN.pace,9.5,28)}${metric('CAL (EST)',RUN.cal,9.5,28)}</div>
+    <div class="lbl" style="font-size:10px;margin:26px 0 8px">SPLITS</div>
+    ${rows.map((r,i)=>`<div style="display:grid;grid-template-columns:60px 1fr 50px;gap:12px;align-items:center;padding:9px 2px;border-bottom:.5px solid rgba(255,255,255,.08)"><span class="lbl" style="font-size:10.5px;color:rgba(255,255,255,.55)">${r[0]}</span><div style="height:6px;border-radius:3px;background:${paceColor([.2,.45,.85,.7,.3,.5][i],S.pal)};width:${[40,60,95,80,50,62][i]}%"></div><span style="font-weight:800;text-align:right;font-variant-numeric:tabular-nums">${r[1]}</span></div>`).join('')}
+  </div>`;
+}
+
+// ---------- overlays ----------
+function previewSheet(){ // Variant A
+  return `<div class="scrim" data-act="dismiss"><div class="sheet" data-stop>
+    <div class="grabber"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="font-weight:700;font-size:16px">Share to Story</div><button class="cbtn" style="width:30px;height:30px" data-act="dismiss">${I.close}</button></div>
+    <div style="display:flex;justify-content:center"><div style="border-radius:12px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.6)">${scaledCard(232)}</div></div>
+    ${filterStrip(true)}
+    <div class="btn-row">${S.ig?`<button class="bigbtn ig" data-act="ig-direct">${I.ig} Instagram Stories</button>`:''}<button class="bigbtn sec" data-act="sys-sheet">${S.ig?'More…':`${I.share} Share image…`}</button></div>
+  </div></div>`;
+}
+function systemSheet(){
+  const igAction = S.variant==='C' && S.ig ? `<div data-act="ig-direct" style="font-weight:600">Share to Instagram Story <span>${I.ig}</span></div>` : '';
+  return `<div class="scrim" data-act="dismiss"><div class="sheet ios-sheet" data-stop>
+    <div class="ios-head"><div class="thumb">${scaledCard(42)}</div><div><div style="font-weight:600;font-size:14px">Brooklyn run · 5.42 km</div><div style="font-size:12px;color:rgba(255,255,255,.55)">PNG Image · 1080×1920</div></div><button class="cbtn" style="width:28px;height:28px;margin-left:auto" data-act="dismiss">${I.close}</button></div>
+    <div class="apps">
+      <div class="app" data-act="sent:AirDrop"><i style="background:#2f7cf6"></i>AirDrop</div>
+      <div class="app" data-act="sent:Messages"><i style="background:#34c759"></i>Messages</div>
+      ${S.ig?`<div class="app" data-act="sent:Instagram (feed/DM picker)"><i style="background:linear-gradient(45deg,#f9ce34,#ee2a7b,#6228d7)"></i>Instagram</div>`:''}
+      <div class="app" data-act="sent:WhatsApp"><i style="background:#25d366"></i>WhatsApp</div>
+    </div>
+    <div class="actions">${igAction}<div data-act="sent:Photos (saved)">Save Image <span>↓</span></div><div data-act="sent:Clipboard">Copy <span>⧉</span></div></div>
+  </div></div>`;
+}
+function igComposer(){
+  return `<div class="ig-composer"><div class="fill">${scaledCard(340)}</div>
+    <div class="abs" style="top:46px;left:14px;right:14px;display:flex;justify-content:space-between"><button class="cbtn" style="width:34px;height:34px" data-act="dismiss">${I.close}</button><div style="display:flex;gap:8px"><span class="pill">Aa</span><span class="pill">☺</span></div></div>
+    <div class="abs" style="bottom:22px;left:14px;right:14px;display:flex;gap:10px"><button class="bigbtn sec" style="height:44px;border-radius:22px" data-act="dismiss">Your story</button><button class="bigbtn sec" style="height:44px;border-radius:22px" data-act="dismiss">Close friends</button></div>
+    <div class="abs lbl" style="top:92px;left:0;right:0;text-align:center;font-size:9px;color:#ffcf33">MOCK · Instagram Stories composer</div></div>`;
+}
+
+// ---------- render ----------
+function render(){
+  const sc=document.getElementById('screen');
+  let html = S.screen==='summary'?summaryHTML():detailHTML();
+  if(S.overlay==='preview') html+=previewSheet();
+  if(S.overlay==='sys') html+=systemSheet();
+  if(S.overlay==='ig') html+=igComposer();
+  if(S.toast) html+=`<div class="toast">${S.toast}</div>`;
+  sc.innerHTML=html;
+  document.getElementById('cardOut').innerHTML=scaledCard(216);
+  document.getElementById('vlabel').textContent=`${S.variant} (${VARIANTS[S.variant]})`;
+  document.getElementById('phoneTitle').textContent=`Variant ${S.variant} · ${VARIANTS[S.variant]}`;
+  document.getElementById('verdict').innerHTML=VERDICT[S.variant];
+  document.getElementById('state').textContent =
+`variant     ${S.variant} — ${VARIANTS[S.variant]}
+screen      ${S.screen}
+overlay     ${S.overlay||'none'}
+background  ${S.photo==='photo'?'photo, filter '+S.filter:'dark map (no photo)'}
+instagram   ${S.ig?'installed':'not installed'}
+palette     ${S.pal}
+--- log (newest first)
+${S.log.join('\n')||'(tap Share)'}`;
+}
+function flash(m){ S.toast=m; render(); clearTimeout(flash.t); flash.t=setTimeout(()=>{S.toast=null;render();},1600); }
+
+document.getElementById('screen').addEventListener('click',e=>{
+  const f=e.target.closest('[data-filter]');
+  if(f){ S.filter=f.dataset.filter; log(`filter → ${S.filter} (saved on the Run)`); return render(); }
+  const a=e.target.closest('[data-act]'); if(!a) return;
+  if(a.dataset.act==='dismiss' && e.target.closest('[data-stop]') && !e.target.closest('button')) return;
+  const act=a.dataset.act;
+  if(act==='share'){ S.overlay = S.variant==='A'?'preview':'sys'; log(`tap Share → ${S.overlay==='preview'?'preview sheet':'system share sheet'}`); }
+  else if(act==='sys-sheet'){ S.overlay='sys'; log('open system share sheet (ShareLink, PNG)'); }
+  else if(act==='ig-direct'){
+    if(!S.ig){ S.overlay='sys'; log('instagram-stories://share failed → fall back to share sheet'); }
+    else { S.overlay='ig'; log('render PNG → pasteboard backgroundImage → open instagram-stories://share'); }
+  }
+  else if(act==='dismiss'){ S.overlay=null; log('dismissed'); }
+  else if(act.startsWith('sent:')){ S.overlay=null; log(`shared via ${act.slice(5)}`); return flash(`Sent to ${act.slice(5)}`); }
+  render();
+});
+const bind=(id,k,f=v=>v)=>document.getElementById(id).addEventListener('change',e=>{ S[k]=f(e.target.type==='checkbox'?e.target.checked:e.target.value); S.overlay=null; log(`${k} → ${S[k]}`); render(); });
+bind('cScreen','screen'); bind('cPhoto','photo'); bind('cIG','ig'); bind('cPal','pal');
+
+function go(d){ const ks=Object.keys(VARIANTS); S.variant=ks[(ks.indexOf(S.variant)+d+ks.length)%ks.length]; S.overlay=null; const u=new URL(location); u.searchParams.set('variant',S.variant); history.replaceState(null,'',u); render(); }
+document.getElementById('prev').onclick=()=>go(-1);
+document.getElementById('next').onclick=()=>go(1);
+addEventListener('keydown',e=>{ if(e.target.closest('input,textarea,select,[contenteditable]')) return; if(e.key==='ArrowLeft') go(-1); if(e.key==='ArrowRight') go(1); });
+render();
+</script>
+</body>
+</html>
