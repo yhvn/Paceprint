@@ -1,4 +1,4 @@
-# Paceline
+# Paceprint
 
 An iPhone app for recording runs and sharing them as photo-backed, pace-colored route cards.
 
