@@ -36,7 +36,10 @@ struct RunRecorderTests {
         await recorder.start()
         #expect(recorder.isRecording)
         await recorder.waitUntilSourceFinishes()
-        clock.advance(by: 400)
+        // 3 s after the last fix: Current pace still covers the 30 s up to that fix.
+        clock.advance(by: 403)
+        let currentPace = try #require(recorder.currentPace)
+        #expect(abs(currentPace.seconds(per: .kilometers) - 359.73) < 0.01)
         recorder.stop()
 
         let run = try savedRun()
@@ -46,8 +49,8 @@ struct RunRecorderTests {
         #expect(route.count == 101)
         #expect(route.last?.cumulativeDistance == run.distance)
         #expect(route.allSatisfy { $0.timestamp >= run.startDate && $0.timestamp <= run.endDate })
-        #expect(run.elapsedTime == 400)
-        #expect(run.movingTime == 400)
+        #expect(run.elapsedTime == 403)
+        #expect(run.movingTime == 403)
         #expect(run.pauses.isEmpty)
         #expect(!recorder.isRecording)
     }

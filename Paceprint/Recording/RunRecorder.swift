@@ -14,7 +14,7 @@ final class RunRecorder {
     var distance: Double { tracker?.distance ?? 0 }
     // Time-based values are read from the clock on each access; screens re-read them every second.
     var movingTime: TimeInterval { tracker?.movingTime(at: now()) ?? 0 }
-    var currentPace: Pace? { tracker?.currentPace(at: now()) }
+    var currentPace: Pace? { tracker?.currentPace }
     var averagePace: Pace? { tracker?.averagePace(at: now()) }
 
     private var tracker: RunTracker?
@@ -54,19 +54,18 @@ final class RunRecorder {
         tracker?.pause(at: now())
     }
 
+    /// Ends the Pause; fixes count toward the Run again from now.
     func resume() {
         tracker?.resume(at: now())
     }
 
     /// Ends the Run, and any Pause it's in, and saves it.
     func stop() {
-        guard var tracker else { return }
+        guard let tracker else { return }
         recording?.cancel()
         recording = nil
 
-        let endDate = now()
-        tracker.resume(at: endDate)
-        modelContext.insert(Run(tracker, endDate: endDate))
+        modelContext.insert(Run(tracker, endDate: now()))
         do {
             try modelContext.save()
         } catch {

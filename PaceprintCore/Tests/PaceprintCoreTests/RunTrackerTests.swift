@@ -235,7 +235,7 @@ struct RunTrackerTests {
         var tracker = RunTracker(runStart: start)
         for step in 0...15 { _ = tracker.add(fix(step: step, seconds: Double(step) * 4)) }
 
-        let pace = try #require(tracker.currentPace(at: start.addingTimeInterval(60)))
+        let pace = try #require(tracker.currentPace)
         #expect(abs(pace.seconds(per: .kilometers) - Self.steadyPace) < 0.01)
     }
 
@@ -249,7 +249,7 @@ struct RunTrackerTests {
 
         // 76 s of Moving time: the window is 46 s to 76 s of Moving time, 7.5 steps.
         // Counting the Pause would give 4 steps in 30 s: 11:14 /km.
-        let pace = try #require(tracker.currentPace(at: start.addingTimeInterval(136)))
+        let pace = try #require(tracker.currentPace)
         #expect(abs(pace.seconds(per: .kilometers) - Self.steadyPace) < 0.01)
     }
 
@@ -261,7 +261,7 @@ struct RunTrackerTests {
         tracker.resume(at: start.addingTimeInterval(200))
 
         // 29 s of Moving time, 209 s elapsed.
-        #expect(tracker.currentPace(at: start.addingTimeInterval(209)) == nil)
+        #expect(tracker.currentPace == nil)
     }
 
     @Test("No Current pace when slower than 20:00 /km")
@@ -270,7 +270,7 @@ struct RunTrackerTests {
         // One step every 14 s is 20:59 /km.
         for step in 0...5 { _ = tracker.add(fix(step: step, seconds: Double(step) * 14)) }
 
-        #expect(tracker.currentPace(at: start.addingTimeInterval(70)) == nil)
+        #expect(tracker.currentPace == nil)
     }
 
     @Test("No Current pace when standing still")
@@ -278,6 +278,31 @@ struct RunTrackerTests {
         var tracker = RunTracker(runStart: start)
         for second in stride(from: 0.0, through: 60, by: 4) { _ = tracker.add(fix(step: 0, seconds: second)) }
 
-        #expect(tracker.currentPace(at: start.addingTimeInterval(60)) == nil)
+        #expect(tracker.currentPace == nil)
+    }
+
+    @Test("The Route breaks across a Pause even when no fix was kept during it")
+    func routeBreaksWithoutPausedFix() {
+        var tracker = RunTracker(runStart: start)
+        _ = tracker.add(fix(step: 0, seconds: 0))
+        _ = tracker.add(fix(step: 1, seconds: 4))
+        tracker.pause(at: start.addingTimeInterval(5))
+        tracker.resume(at: start.addingTimeInterval(60))
+        _ = tracker.add(fix(step: 21, seconds: 64))
+        _ = tracker.add(fix(step: 22, seconds: 68))
+
+        #expect(abs(tracker.distance - 2 * stepMetres) < 0.01)
+    }
+
+    @Test("Moving far during a Pause isn't taken for a teleport after Resume")
+    func farDuringPause() {
+        var tracker = RunTracker(runStart: start)
+        _ = tracker.add(fix(step: 0, seconds: 0))
+        tracker.pause(at: start.addingTimeInterval(5))
+        tracker.resume(at: start.addingTimeInterval(60))
+
+        // 200 steps (2.2 km) in 64 s is 35 m/s, but it was covered while paused.
+        #expect(tracker.add(fix(step: 200, seconds: 64)) != nil)
+        #expect(tracker.distance == 0)
     }
 }

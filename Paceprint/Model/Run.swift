@@ -18,13 +18,13 @@ final class Run {
     /// The Route's points in `RouteEncoding`'s versioned format.
     @Attribute(.externalStorage) var routeData: Data
 
-    /// The Run `tracker` recorded, stopped at `endDate`. Any Pause still going must be ended first.
+    /// The Run `tracker` recorded, stopped at `endDate`. A Pause still going ends at Stop.
     init(_ tracker: RunTracker, endDate: Date) {
         startDate = tracker.runStart
         self.endDate = endDate
         elapsedTime = endDate.timeIntervalSince(tracker.runStart)
         movingTime = tracker.movingTime(at: endDate)
-        pauses = tracker.pauses
+        pauses = tracker.pauses.map { Pause(start: $0.start, end: $0.end ?? endDate) }
         distance = tracker.distance
         routeData = RouteEncoding.encode(tracker.points)
     }
