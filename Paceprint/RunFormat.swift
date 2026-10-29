@@ -13,4 +13,11 @@ enum RunFormat {
         let duration = Duration.seconds(seconds.rounded(.down))
         return duration.formatted(.time(pattern: seconds >= 3_600 ? .hourMinuteSecond : .minuteSecond))
     }
+
+    /// A Pace per kilometre as "m:ss", e.g. "5:15", or "--:--" when there's none to show.
+    static func pace(_ pace: Pace?) -> String {
+        guard let pace else { return "--:--" }
+        let seconds = pace.seconds(per: .kilometers).rounded()
+        return Duration.seconds(seconds).formatted(.time(pattern: .minuteSecond))
+    }
 }

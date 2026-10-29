@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Active run: the live distance and TIME, and Stop.
+/// Active run: the live distance, TIME and Paces, Pause/Resume and Stop.
 struct ActiveRunView: View {
     @Environment(RunRecorder.self) private var recorder
 
@@ -13,28 +13,55 @@ struct ActiveRunView: View {
 
                 Metric(label: "KM", value: RunFormat.kilometres(recorder.distance), size: .hero)
 
-                TimelineView(.periodic(from: .now, by: 1)) { context in
-                    // Moving time; with no Pauses yet, that's the time since Start.
-                    let movingTime = recorder.startDate.map { context.date.timeIntervalSince($0) } ?? 0
-                    Metric(label: "TIME", value: RunFormat.time(movingTime), size: .lg)
+                // Time-based values are read from the recorder's clock; redraw them every second.
+                TimelineView(.periodic(from: .now, by: 1)) { _ in
+                    VStack(spacing: 32) {
+                        Metric(label: "TIME", value: RunFormat.time(recorder.movingTime), size: .lg)
+                        HStack(spacing: 48) {
+                            Metric(label: "PACE", value: RunFormat.pace(recorder.currentPace), size: .md)
+                            Metric(label: "AVG PACE", value: RunFormat.pace(recorder.averagePace), size: .md)
+                        }
+                    }
                 }
 
                 Spacer()
 
-                Button {
-                    recorder.stop()
-                } label: {
-                    Text("STOP")
-                        .font(Theme.Typography.metric(.sm))
-                        .tracking(Theme.Typography.labelTracking)
-                        .foregroundStyle(Theme.Colors.textPrimary)
-                        .frame(width: 120, height: 120)
-                        .background(Theme.Colors.liveRed, in: Circle())
+                HStack(spacing: 32) {
+                    if recorder.isPaused {
+                        RoundButton(title: "RESUME", color: Theme.Colors.actionWhite, textColor: Theme.Colors.textOnLight) {
+                            recorder.resume()
+                        }
+                    } else {
+                        RoundButton(title: "PAUSE", color: Theme.Colors.pauseAmber, textColor: Theme.Colors.textOnLight) {
+                            recorder.pause()
+                        }
+                    }
+                    RoundButton(title: "STOP", color: Theme.Colors.liveRed, textColor: Theme.Colors.textPrimary) {
+                        recorder.stop()
+                    }
                 }
                 .padding(.bottom, 24)
             }
         }
         .preferredColorScheme(.dark)
+    }
+}
+
+private struct RoundButton: View {
+    let title: String
+    let color: Color
+    let textColor: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(Theme.Typography.label)
+                .tracking(Theme.Typography.labelTracking)
+                .foregroundStyle(textColor)
+                .frame(width: 104, height: 104)
+                .background(color, in: Circle())
+        }
     }
 }
 

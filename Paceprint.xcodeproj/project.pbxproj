@@ -25,9 +25,22 @@
 		A9811BCF3091E5A100080CEC /* Paceprint.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Paceprint.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		A9811C403091E5A400080CEC /* Exceptions for "Paceprint" folder in "Paceprint" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = A9811BCE3091E5A100080CEC /* Paceprint */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		A9811BD13091E5A100080CEC /* Paceprint */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A9811C403091E5A400080CEC /* Exceptions for "Paceprint" folder in "Paceprint" target */,
+			);
 			path = Paceprint;
 			sourceTree = "<group>";
 		};
@@ -341,6 +354,7 @@
 				DEVELOPMENT_TEAM = 7VLJ3KD753;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Paceprint/Info.plist;
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Paceprint uses your location to record the route, distance and pace of your runs.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -374,6 +388,7 @@
 				DEVELOPMENT_TEAM = 7VLJ3KD753;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Paceprint/Info.plist;
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Paceprint uses your location to record the route, distance and pace of your runs.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
