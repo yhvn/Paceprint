@@ -17,13 +17,7 @@ public struct RouteTracker: Sendable {
         let last = points.last
         guard NoiseFilter.accepts(fix, runStart: runStart, after: last) else { return nil }
 
-        var cumulativeDistance = 0.0
-        if let last {
-            cumulativeDistance = last.cumulativeDistance + Distance.between(
-                latitude: last.latitude, longitude: last.longitude,
-                andLatitude: fix.latitude, longitude: fix.longitude
-            )
-        }
+        let cumulativeDistance = last.map { $0.cumulativeDistance + $0.distance(to: fix) } ?? 0
         let point = RoutePoint(
             timestamp: fix.timestamp,
             latitude: fix.latitude,

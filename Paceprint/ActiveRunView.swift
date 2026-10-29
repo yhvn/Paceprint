@@ -14,8 +14,9 @@ struct ActiveRunView: View {
                 Metric(label: "KM", value: RunFormat.kilometres(recorder.distance), size: .hero)
 
                 TimelineView(.periodic(from: .now, by: 1)) { context in
-                    let elapsed = recorder.startDate.map { context.date.timeIntervalSince($0) } ?? 0
-                    Metric(label: "TIME", value: RunFormat.time(elapsed), size: .lg)
+                    // Moving time; with no Pauses yet, that's the time since Start.
+                    let movingTime = recorder.startDate.map { context.date.timeIntervalSince($0) } ?? 0
+                    Metric(label: "TIME", value: RunFormat.time(movingTime), size: .lg)
                 }
 
                 Spacer()

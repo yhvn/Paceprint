@@ -23,7 +23,7 @@ struct RunRecorderTests {
 
         await recorder.start()
         #expect(recorder.isRecording)
-        await recorder.sourceFinished()
+        await recorder.waitUntilSourceFinishes()
         recorder.stop()
 
         let runs = try container.mainContext.fetch(FetchDescriptor<Run>())

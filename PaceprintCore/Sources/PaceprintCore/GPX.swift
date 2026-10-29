@@ -9,7 +9,7 @@ public enum GPX {
     }
 
     /// GPX carries no accuracy, so replayed fixes claim a good GPS fix.
-    public static let replayedHorizontalAccuracy = 5.0
+    static let replayedHorizontalAccuracy = 5.0
 
     public static func fixes(from data: Data) throws -> [LocationFix] {
         let delegate = Delegate()

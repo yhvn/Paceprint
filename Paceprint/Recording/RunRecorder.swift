@@ -20,7 +20,7 @@ final class RunRecorder {
 
     @ObservationIgnored private let source: any LocationSource
     @ObservationIgnored private let modelContext: ModelContext
-    @ObservationIgnored private let logger = Logger(subsystem: "com.yhlabs.paceprint", category: "RunRecorder")
+    @ObservationIgnored private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Paceprint", category: "RunRecorder")
 
     init(source: any LocationSource, modelContext: ModelContext) {
         self.source = source
@@ -63,7 +63,7 @@ final class RunRecorder {
     }
 
     /// Waits until the location source runs out of fixes. Only a replayed source ever does.
-    func sourceFinished() async {
+    func waitUntilSourceFinishes() async {
         await recording?.value
     }
 }

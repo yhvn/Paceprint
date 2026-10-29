@@ -17,10 +17,6 @@ enum NoiseFilter {
 
         let seconds = fix.timestamp.timeIntervalSince(last.timestamp)
         guard seconds > 0 else { return false }
-        let metres = Distance.between(
-            latitude: last.latitude, longitude: last.longitude,
-            andLatitude: fix.latitude, longitude: fix.longitude
-        )
-        return metres / seconds <= maximumSpeed
+        return last.distance(to: fix) / seconds <= maximumSpeed
     }
 }
