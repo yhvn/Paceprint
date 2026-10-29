@@ -17,11 +17,21 @@ struct RunRecorderTests {
         container = try ModelContainer(for: Run.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
     }
 
-    private func recorder(isAuthorized: Bool = true) throws -> RunRecorder {
+    private func recorder() throws -> RunRecorder {
         let url = try #require(Bundle(for: TestClock.self).url(forResource: fixture, withExtension: "gpx"))
         let clock = clock
-        let source = try GPXReplayLocationSource(contentsOf: url, isAuthorized: isAuthorized, now: { clock.now })
+        let source = try GPXReplayLocationSource(contentsOf: url, now: { clock.now })
+        return recorder(source)
+    }
+
+    private func recorder(_ source: some LocationSource) -> RunRecorder {
+        let clock = clock
         return RunRecorder(source: source, modelContext: container.mainContext, now: { clock.now })
+    }
+
+    /// A good fix `seconds` after the clock's current time.
+    private func fix(in seconds: TimeInterval) -> LocationEvent {
+        .fix(LocationFix(timestamp: clock.now + seconds, latitude: 40.78, longitude: -73.966, altitude: 30, horizontalAccuracy: 5))
     }
 
     private func savedRun() throws -> Run {
@@ -100,13 +110,82 @@ struct RunRecorderTests {
         #expect(run.movingTime == 100)
     }
 
-    @Test("Without location permission the Run doesn't start")
-    func deniedPermission() async throws {
-        let recorder = try recorder(isAuthorized: false)
+    @Test("When location can't be used, Start says why and the Run doesn't start", arguments: LocationProblem.allCases)
+    func startBlocked(_ problem: LocationProblem) async {
+        let recorder = recorder(ScriptedLocationSource(problem: problem, script: []))
 
         await recorder.start()
 
         #expect(!recorder.isRecording)
+        #expect(recorder.startProblem == problem)
+    }
+
+    @Test("Losing location access mid-Run Pauses it, and Resume waits for access")
+    func accessLost() async {
+        let recorder = recorder(ScriptedLocationSource(script: [fix(in: 1), fix(in: 5), .accessLost]))
+
+        await recorder.start()
+        clock.advance(by: 30)
+        await recorder.waitUntilSourceFinishes()
+
+        #expect(recorder.isPaused)
+        #expect(recorder.isAccessLost)
+        #expect(recorder.movingTime == 30)
+        recorder.resume()
+        #expect(recorder.isPaused)
+    }
+
+    @Test("Once access is back, the Run stays paused until Resume")
+    func accessBack() async {
+        let recorder = recorder(ScriptedLocationSource(script: [fix(in: 1), .accessLost, fix(in: 40)]))
+
+        await recorder.start()
+        clock.advance(by: 30)
+        await recorder.waitUntilSourceFinishes()
+
+        #expect(recorder.isPaused)
+        #expect(!recorder.isAccessLost)
+        recorder.resume()
+        #expect(!recorder.isPaused)
+    }
+
+    @Test("GPS reads weak 10 s after the last fix, unless the device reported standing still")
+    func gpsStatus() async {
+        let moving = recorder(ScriptedLocationSource(script: [fix(in: 1)]))
+        let standing = recorder(ScriptedLocationSource(script: [fix(in: 1), .stationary]))
+
+        await moving.start()
+        await standing.start()
+        await moving.waitUntilSourceFinishes()
+        await standing.waitUntilSourceFinishes()
+        clock.advance(by: 60)
+
+        #expect(moving.gpsStatus == .weak)
+        #expect(standing.gpsStatus == .good)
+    }
+
+    @Test("Access counts as back when the system reports the device standing still, with no fix")
+    func accessBackWhileStanding() async {
+        let recorder = recorder(ScriptedLocationSource(script: [fix(in: 1), .accessLost, .stationary]))
+
+        await recorder.start()
+        await recorder.waitUntilSourceFinishes()
+
+        #expect(!recorder.isAccessLost)
+        recorder.resume()
+        #expect(!recorder.isPaused)
+    }
+
+    @Test("A manual Pause doesn't count as lost access")
+    func manualPauseKept() async {
+        let recorder = recorder(ScriptedLocationSource(script: [fix(in: 1), fix(in: 5)]))
+
+        await recorder.start()
+        recorder.pause()
+        await recorder.waitUntilSourceFinishes()
+
+        #expect(recorder.isPaused)
+        #expect(!recorder.isAccessLost)
     }
 }
 
@@ -116,5 +195,22 @@ final class TestClock {
 
     func advance(by seconds: TimeInterval) {
         now += seconds
+    }
+}
+
+/// Plays back a fixed list of location events, then ends.
+struct ScriptedLocationSource: LocationSource {
+    var problem: LocationProblem?
+    var script: [LocationEvent]
+
+    func prepare() async -> LocationProblem? {
+        problem
+    }
+
+    func events() -> AsyncStream<LocationEvent> {
+        AsyncStream { continuation in
+            script.forEach { continuation.yield($0) }
+            continuation.finish()
+        }
     }
 }

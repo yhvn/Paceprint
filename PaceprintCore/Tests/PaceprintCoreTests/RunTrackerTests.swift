@@ -305,4 +305,65 @@ struct RunTrackerTests {
         #expect(tracker.add(fix(step: 200, seconds: 64)) != nil)
         #expect(tracker.distance == 0)
     }
+
+    @Test("GPS is being found until the first point is kept")
+    func findingGPS() {
+        var tracker = RunTracker(runStart: start)
+        #expect(tracker.gpsStatus(at: start.addingTimeInterval(20)) == .finding)
+
+        // A fix too poor to keep doesn't count as found.
+        _ = tracker.add(fix(step: 0, seconds: 21, accuracy: 60))
+        #expect(tracker.gpsStatus(at: start.addingTimeInterval(22)) == .finding)
+
+        _ = tracker.add(fix(step: 0, seconds: 23))
+        #expect(tracker.gpsStatus(at: start.addingTimeInterval(24)) == .good)
+    }
+
+    @Test("GPS is weak once no point has been kept for 10 s")
+    func weakGPS() {
+        var tracker = RunTracker(runStart: start)
+        _ = tracker.add(fix(step: 0, seconds: 0))
+        _ = tracker.add(fix(step: 1, seconds: 4))
+
+        #expect(tracker.gpsStatus(at: start.addingTimeInterval(13.9)) == .good)
+        #expect(tracker.gpsStatus(at: start.addingTimeInterval(14)) == .weak)
+
+        // Noisy fixes don't count as GPS coming back.
+        _ = tracker.add(fix(step: 2, seconds: 15, accuracy: 80))
+        #expect(tracker.gpsStatus(at: start.addingTimeInterval(16)) == .weak)
+
+        _ = tracker.add(fix(step: 3, seconds: 17))
+        #expect(tracker.gpsStatus(at: start.addingTimeInterval(18)) == .good)
+    }
+
+    @Test("When fixes return after a gap, it's bridged with a straight line")
+    func gapBridged() {
+        var tracker = RunTracker(runStart: start)
+        _ = tracker.add(fix(step: 0, seconds: 0))
+        // 60 s in a tunnel, 15 steps (167 m) further on: 2.8 m/s.
+        _ = tracker.add(fix(step: 15, seconds: 60))
+
+        #expect(abs(tracker.distance - 15 * stepMetres) < 0.01)
+    }
+
+    @Test("Standing still isn't weak GPS: the system stops sending fixes while it reports stationary")
+    func stationaryIsNotWeak() {
+        var tracker = RunTracker(runStart: start)
+        _ = tracker.add(fix(step: 0, seconds: 0))
+        tracker.markStationary()
+
+        #expect(tracker.gpsStatus(at: start.addingTimeInterval(60)) == .good)
+
+        // Moving again: the next kept fix ends it, and the usual 10 s rule applies.
+        _ = tracker.add(fix(step: 1, seconds: 64))
+        #expect(tracker.gpsStatus(at: start.addingTimeInterval(80)) == .weak)
+    }
+
+    @Test("Stationary before any point is kept is still finding GPS")
+    func stationaryWhileFinding() {
+        var tracker = RunTracker(runStart: start)
+        tracker.markStationary()
+
+        #expect(tracker.gpsStatus(at: start.addingTimeInterval(30)) == .finding)
+    }
 }

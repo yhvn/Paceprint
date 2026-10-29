@@ -10,6 +10,7 @@ import SwiftUI
 /// Home: start a Run, or look back through History.
 struct ContentView: View {
     @Environment(RunRecorder.self) private var recorder
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         NavigationStack {
@@ -47,6 +48,18 @@ struct ContentView: View {
                     .padding(.bottom, 24)
                 }
             }
+        }
+        .alert(
+            recorder.startProblem?.title ?? "",
+            isPresented: Binding(get: { recorder.startProblem != nil }, set: { if !$0 { recorder.startProblem = nil } }),
+            presenting: recorder.startProblem
+        ) { problem in
+            if problem.offersSettings {
+                Button("Open Settings") { openURL(.appSettings) }
+            }
+            Button(problem.dismissTitle, role: .cancel) {}
+        } message: { problem in
+            Text(problem.message)
         }
         .fullScreenCover(isPresented: .constant(recorder.isRecording)) {
             ActiveRunView()
