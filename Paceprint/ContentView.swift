@@ -7,37 +7,49 @@
 
 import SwiftUI
 
-/// Placeholder until Home lands in "Record a first Run, end to end".
+/// Home: start a Run, or look back through History.
 struct ContentView: View {
+    @Environment(RunRecorder.self) private var recorder
+
     var body: some View {
-        ZStack {
-            Theme.Colors.inkBlack.ignoresSafeArea()
+        NavigationStack {
+            ZStack {
+                Theme.Colors.inkBlack.ignoresSafeArea()
 
-            VStack(spacing: 24) {
-                Text("PACEPRINT")
-                    .font(Theme.Typography.label)
-                    .tracking(Theme.Typography.wordmarkTracking)
-                    .foregroundStyle(Theme.Colors.textSecondary)
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("KM")
+                VStack {
+                    Text("PACEPRINT")
                         .font(Theme.Typography.label)
-                        .tracking(Theme.Typography.labelTracking)
+                        .tracking(Theme.Typography.wordmarkTracking)
                         .foregroundStyle(Theme.Colors.textSecondary)
-                    Text("0.00")
-                        .font(Theme.Typography.metric(.xl))
-                        .tracking(Theme.Typography.metricTracking(.xl))
-                        .foregroundStyle(Theme.Colors.textPrimary)
-                }
+                        .padding(.top, 24)
 
-                HStack(spacing: 0) {
-                    Theme.Colors.paceFast
-                    Theme.Colors.paceMid
-                    Theme.Colors.paceSlow
+                    Spacer()
+
+                    Button {
+                        Task { await recorder.start() }
+                    } label: {
+                        Text("START")
+                            .font(Theme.Typography.metric(.sm))
+                            .tracking(Theme.Typography.labelTracking)
+                            .foregroundStyle(Theme.Colors.textOnLight)
+                            .frame(width: 160, height: 160)
+                            .background(Theme.Colors.actionWhite, in: Circle())
+                    }
+
+                    Spacer()
+
+                    NavigationLink("History") {
+                        HistoryView()
+                    }
+                    .font(Theme.Typography.label)
+                    .tracking(Theme.Typography.labelTracking)
+                    .foregroundStyle(Theme.Colors.textPrimary)
+                    .padding(.bottom, 24)
                 }
-                .frame(width: 120, height: 6)
-                .clipShape(Capsule())
             }
+        }
+        .fullScreenCover(isPresented: .constant(recorder.isRecording)) {
+            ActiveRunView()
         }
         .preferredColorScheme(.dark)
     }
@@ -45,4 +57,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
+        .environment(RunRecorder.preview)
 }
