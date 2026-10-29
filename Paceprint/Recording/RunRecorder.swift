@@ -66,6 +66,8 @@ final class RunRecorder {
             isAccessLost = false
             _ = tracker?.add(fix)
         case .stationary:
+            // The system only reports this while it can locate the device, so access is back too.
+            isAccessLost = false
             tracker?.markStationary()
         case .accessLost:
             guard !isAccessLost else { return }

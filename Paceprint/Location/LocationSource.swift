@@ -23,6 +23,7 @@ enum LocationProblem: CaseIterable, Equatable {
     case preciseOff
 }
 
+/// What a `LocationSource` reports during a Run.
 enum LocationEvent: Equatable {
     /// A reading, before the noise filter.
     case fix(LocationFix)

@@ -5,6 +5,10 @@ import SwiftUI
 struct ActiveRunView: View {
     @Environment(RunRecorder.self) private var recorder
     @Environment(\.openURL) private var openURL
+    @State private var isShowingAccessLost = false
+
+    private static let accessLostTitle = "Location access was turned off"
+    private static let accessLostMessage = "Your run is paused. Turn location back on in Settings to continue."
 
     var body: some View {
         ZStack {
@@ -38,9 +42,13 @@ struct ActiveRunView: View {
 
                 HStack(spacing: 32) {
                     if recorder.isPaused {
-                        // Dimmed while location access is off; the banner says why it won't Resume.
+                        // Dimmed while location access is off; tapping it then says why it won't Resume.
                         RoundButton(title: "RESUME", color: Theme.Colors.actionWhite, textColor: Theme.Colors.textOnLight) {
-                            recorder.resume()
+                            if recorder.isAccessLost {
+                                isShowingAccessLost = true
+                            } else {
+                                recorder.resume()
+                            }
                         }
                         .opacity(recorder.isAccessLost ? 0.4 : 1)
                     } else {
@@ -55,15 +63,22 @@ struct ActiveRunView: View {
                 .padding(.bottom, 24)
             }
         }
+        .alert(Self.accessLostTitle, isPresented: $isShowingAccessLost) {
+            Button("Open Settings") { openURL(.appSettings) }
+            Button("Stop run", role: .destructive) { recorder.stop() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(Self.accessLostMessage)
+        }
         .preferredColorScheme(.dark)
     }
 
     private var accessLostBanner: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Location access was turned off")
+            Text(Self.accessLostTitle)
                 .font(.headline)
                 .foregroundStyle(Theme.Colors.textPrimary)
-            Text("Your run is paused. Turn location back on in Settings to continue.")
+            Text(Self.accessLostMessage)
                 .font(.subheadline)
                 .foregroundStyle(Theme.Colors.textSecondary)
             HStack(spacing: 20) {

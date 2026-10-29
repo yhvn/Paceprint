@@ -164,7 +164,19 @@ struct RunRecorderTests {
         #expect(standing.gpsStatus == .good)
     }
 
-    @Test("A manual Pause isn't ended or flagged by access coming back")
+    @Test("Access counts as back when the system reports the device standing still, with no fix")
+    func accessBackWhileStanding() async {
+        let recorder = recorder(ScriptedLocationSource(script: [fix(in: 1), .accessLost, .stationary]))
+
+        await recorder.start()
+        await recorder.waitUntilSourceFinishes()
+
+        #expect(!recorder.isAccessLost)
+        recorder.resume()
+        #expect(!recorder.isPaused)
+    }
+
+    @Test("A manual Pause doesn't count as lost access")
     func manualPauseKept() async {
         let recorder = recorder(ScriptedLocationSource(script: [fix(in: 1), fix(in: 5)]))
 

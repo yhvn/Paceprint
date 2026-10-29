@@ -56,10 +56,8 @@ struct ContentView: View {
         ) { problem in
             if problem.offersSettings {
                 Button("Open Settings") { openURL(.appSettings) }
-                Button("Cancel", role: .cancel) {}
-            } else {
-                Button("OK", role: .cancel) {}
             }
+            Button(problem.dismissTitle, role: .cancel) {}
         } message: { problem in
             Text(problem.message)
         }
