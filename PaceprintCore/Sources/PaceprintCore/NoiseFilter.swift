@@ -9,7 +9,8 @@ enum NoiseFilter {
     static let maximumSpeed = 12.0
 
     /// Whether `fix` should be kept, given the Run's start and the last point kept.
-    static func accepts(_ fix: LocationFix, runStart: Date, after last: RoutePoint?) -> Bool {
+    /// Speed isn't checked `acrossPause`: the runner may have gone anywhere while paused.
+    static func accepts(_ fix: LocationFix, runStart: Date, after last: RoutePoint?, acrossPause: Bool = false) -> Bool {
         guard fix.horizontalAccuracy >= 0, fix.horizontalAccuracy <= maximumHorizontalAccuracy else { return false }
         // A cached fix from before Start says nothing about this Run.
         guard fix.timestamp >= runStart else { return false }
@@ -17,6 +18,7 @@ enum NoiseFilter {
 
         let seconds = fix.timestamp.timeIntervalSince(last.timestamp)
         guard seconds > 0 else { return false }
+        guard !acrossPause else { return true }
         return last.distance(to: fix) / seconds <= maximumSpeed
     }
 }

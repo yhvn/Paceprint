@@ -1,7 +1,8 @@
 import CoreLocation
 import PaceprintCore
 
-/// The device's GPS through `CLLocationUpdate.liveUpdates(.fitness)` (#2).
+/// The device's GPS through `CLLocationUpdate.liveUpdates(.fitness)` (#2), kept running with the
+/// screen locked by a background activity session held for as long as the stream is (Start to Stop).
 final class LiveLocationSource: NSObject, LocationSource, CLLocationManagerDelegate {
     /// Only used to ask for permission; updates come from `liveUpdates`.
     private let manager = CLLocationManager()
@@ -25,6 +26,9 @@ final class LiveLocationSource: NSObject, LocationSource, CLLocationManagerDeleg
     func fixes() -> AsyncStream<LocationFix> {
         AsyncStream { continuation in
             let task = Task {
+                // Must be created in the foreground (Start is a tap) and needs the `location` background mode.
+                let session = CLBackgroundActivitySession()
+                defer { session.invalidate() }
                 do {
                     for try await update in CLLocationUpdate.liveUpdates(.fitness) {
                         // iOS 18 also sends location-less updates carrying only diagnostics.
