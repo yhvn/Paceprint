@@ -9,10 +9,14 @@ public struct RunTracker: Sendable {
     static let currentPaceWindow: TimeInterval = 30
     /// Current pace slower than this, 20:00 /km, isn't shown.
     static let currentPaceSlowest = Pace(secondsPerMetre: 1.2)
+    /// GPS counts as weak once no point has been kept for this long.
+    static let weakGPSAfter: TimeInterval = 10
 
     public let runStart: Date
     public private(set) var points: [RoutePoint] = []
     public private(set) var pauses: [Pause] = []
+    /// The system reported the device stationary and has stopped sending fixes until it moves.
+    private var isStationary = false
 
     /// Metres covered so far.
     public var distance: Double { points.last?.cumulativeDistance ?? 0 }
@@ -29,6 +33,19 @@ public struct RunTracker: Sendable {
             return total + max(0, end.timeIntervalSince(pause.start))
         }
         return date.timeIntervalSince(runStart) - paused
+    }
+
+    /// Whether GPS is still being found, has gone weak, or is fine at `date`.
+    public func gpsStatus(at date: Date) -> GPSStatus {
+        guard let last = points.last else { return .finding }
+        guard !isStationary else { return .good }
+        return date.timeIntervalSince(last.timestamp) >= Self.weakGPSAfter ? .weak : .good
+    }
+
+    /// Notes that the system reported the device stationary: no fixes will come until it moves,
+    /// and that isn't weak GPS. The next kept point ends it.
+    public mutating func markStationary() {
+        isStationary = true
     }
 
     /// Moving time over distance, or nil until 0.1 km.
@@ -105,6 +122,7 @@ public struct RunTracker: Sendable {
             isPaused: isPaused
         )
         points.append(point)
+        isStationary = false
         return point
     }
 }
