@@ -69,14 +69,18 @@ struct RouteDrawing {
         self.end = end.coordinate
     }
 
-    /// Frames the Route, with `roomBelow` times its height of empty map below it.
-    func camera(roomBelow: Double) -> MapCameraPosition {
-        let coordinates = Array(stretches.joined())
-        let bounds = coordinates.map(MKMapPoint.init).reduce(MKMapRect.null) {
+    /// The smallest map rectangle holding the whole Route.
+    var bounds: MKMapRect {
+        stretches.joined().map(MKMapPoint.init).reduce(MKMapRect.null) {
             $0.union(MKMapRect(origin: $1, size: MKMapSize(width: 0, height: 0)))
         }
+    }
+
+    /// Frames the Route, with `roomBelow` times its height of empty map below it.
+    func camera(roomBelow: Double) -> MapCameraPosition {
+        let bounds = bounds
         // At least ~200 m across, so a short Route isn't zoomed into a blur.
-        let side = max(bounds.width, bounds.height, 200 * MKMapPointsPerMeterAtLatitude(coordinates[0].latitude))
+        let side = max(bounds.width, bounds.height, 200 * MKMapPointsPerMeterAtLatitude(start.latitude))
         let route = MKMapRect(x: bounds.midX - side / 2, y: bounds.midY - side / 2, width: side, height: side)
         let margin = side * 0.25
         return .rect(MKMapRect(x: route.minX - margin, y: route.minY - margin, width: side + 2 * margin, height: side * (1 + roomBelow) + 2 * margin))

@@ -13,7 +13,7 @@ public enum RunGrouping {
     /// One month of History: the Runs that started in it, newest first.
     public struct Month<Run> {
         /// The first moment of the month.
-        public let month: Date
+        public let start: Date
         public let runs: [Run]
     }
 
@@ -22,39 +22,42 @@ public enum RunGrouping {
         let newestFirst = runs.sorted { startedAt($0) > startedAt($1) }
         var months: [Month<Run>] = []
         for run in newestFirst {
-            guard let month = calendar.dateInterval(of: .month, for: startedAt(run))?.start else { continue }
-            if months.last?.month == month {
-                months[months.count - 1] = Month(month: month, runs: months[months.count - 1].runs + [run])
+            guard let start = calendar.dateInterval(of: .month, for: startedAt(run))?.start else { continue }
+            if months.last?.start == start {
+                months[months.count - 1] = Month(start: start, runs: months[months.count - 1].runs + [run])
             } else {
-                months.append(Month(month: month, runs: [run]))
+                months.append(Month(start: start, runs: [run]))
             }
         }
         return months
     }
 }
 
+extension RunGrouping.Month: Sendable where Run: Sendable {}
+
 /// Distance, Runs and Moving time added up over some Runs, e.g. all of History.
 public struct RunTotals: Equatable, Sendable {
     /// Metres.
     public let distance: Double
-    public let runs: Int
+    public let runCount: Int
     public let movingTime: TimeInterval
 
-    public init(distance: Double, runs: Int, movingTime: TimeInterval) {
+    public init(distance: Double, runCount: Int, movingTime: TimeInterval) {
         self.distance = distance
-        self.runs = runs
+        self.runCount = runCount
         self.movingTime = movingTime
     }
 
     public init<Run>(_ runs: [Run], distance: (Run) -> Double, movingTime: (Run) -> TimeInterval) {
         self.init(
             distance: runs.reduce(0) { $0 + distance($1) },
-            runs: runs.count,
+            runCount: runs.count,
             movingTime: runs.reduce(0) { $0 + movingTime($1) }
         )
     }
 
-    /// All the Moving time over all the distance, not a mean of each Run's Pace; nil under 0.1 km.
+    /// Average pace across all these Runs: all their Moving time over all their distance, not a mean
+    /// of each Run's Average pace; nil under 0.1 km.
     public var averagePace: Pace? {
         Pace.average(movingTime: movingTime, distance: distance)
     }

@@ -57,7 +57,7 @@ struct RunGroupingTests {
 
         let groups = RunGrouping.byMonth(runs, startedAt: \.start, calendar: cal)
 
-        #expect(groups.map(\.month) == [
+        #expect(groups.map(\.start) == [
             cal.date(from: DateComponents(year: 2026, month: 10))!,
             cal.date(from: DateComponents(year: 2026, month: 9))!,
             cal.date(from: DateComponents(year: 2025, month: 10))!,
@@ -72,7 +72,7 @@ struct RunGroupingTests {
         let totals = RunTotals(runs, distance: \.distance, movingTime: \.movingTime)
 
         #expect(totals.distance == 6_000)
-        #expect(totals.runs == 2)
+        #expect(totals.runCount == 2)
         #expect(totals.movingTime == 1_920)
         // 1,920 s over 6 km: 5:20 /km, not the mean of 5:00 and 7:00.
         #expect(try #require(totals.averagePace).seconds(per: .kilometers) == 320)
@@ -82,7 +82,7 @@ struct RunGroupingTests {
     func noRuns() {
         let totals = RunTotals([FakeRun](), distance: \.distance, movingTime: \.movingTime)
 
-        #expect(totals == RunTotals(distance: 0, runs: 0, movingTime: 0))
+        #expect(totals == RunTotals(distance: 0, runCount: 0, movingTime: 0))
         #expect(totals.averagePace == nil)
     }
 }

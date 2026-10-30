@@ -31,8 +31,7 @@ struct RouteThumbnail: View {
 
     /// Fits the Route into `size`, keeping its shape, with a margin for the line and dots.
     private func projection(of route: RouteDrawing, into size: CGSize) -> (CLLocationCoordinate2D) -> CGPoint {
-        let points = route.stretches.joined().map(MKMapPoint.init)
-        let bounds = points.reduce(MKMapRect.null) { $0.union(MKMapRect(origin: $1, size: MKMapSize(width: 0, height: 0))) }
+        let bounds = route.bounds
         let margin = lineWidth * 4
         let scale = min(
             (size.width - 2 * margin) / max(bounds.width, 1),

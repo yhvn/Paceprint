@@ -33,10 +33,15 @@ struct ContentView: View {
                         .padding(.bottom, 20)
                     startButton
                     Spacer()
-                    thisWeek
-                        .padding(.horizontal, 4)
-                        .padding(.bottom, 14)
-                    latestRun
+                    // Re-read the clock every minute, so the week and dates roll over while the app is open.
+                    TimelineView(.everyMinute) { context in
+                        VStack(spacing: 0) {
+                            thisWeek(now: context.date)
+                                .padding(.horizontal, 4)
+                                .padding(.bottom, 14)
+                            latestRun
+                        }
+                    }
                 }
                 .padding(.horizontal, 18)
                 .padding(.bottom, 20)
@@ -114,8 +119,8 @@ struct ContentView: View {
     }
 
     /// Distance and Runs started this calendar week.
-    private var thisWeek: some View {
-        let week = RunGrouping.startedThisWeek(runs, startedAt: \.startDate, now: .now, calendar: .current)
+    private func thisWeek(now: Date) -> some View {
+        let week = RunGrouping.startedThisWeek(runs, startedAt: \.startDate, now: now, calendar: .current)
         let totals = RunTotals(week, distance: \.distance, movingTime: \.movingTime)
         return HStack(alignment: .bottom) {
             VStack(alignment: .leading, spacing: 4) {
@@ -131,7 +136,7 @@ struct ContentView: View {
             Spacer()
             VStack(alignment: .trailing, spacing: 4) {
                 weekLabel("RUNS")
-                Text("\(totals.runs)")
+                Text("\(totals.runCount)")
                     .font(.system(size: 28, weight: .heavy).monospacedDigit())
                     .foregroundStyle(Theme.Colors.textPrimary)
             }

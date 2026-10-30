@@ -1,3 +1,4 @@
+import os
 import PaceprintCore
 import SwiftData
 import SwiftUI
@@ -9,6 +10,7 @@ struct HistoryView: View {
     @Query(filter: Run.finished, sort: \Run.startDate, order: .reverse) private var runs: [Run]
     @State private var openRun: Run?
     @State private var runToDelete: Run?
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Paceprint", category: "History")
 
     var body: some View {
         Group {
@@ -36,7 +38,7 @@ struct HistoryView: View {
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-            ForEach(RunGrouping.byMonth(runs, startedAt: \.startDate, calendar: .current), id: \.month) { month in
+            ForEach(RunGrouping.byMonth(runs, startedAt: \.startDate, calendar: .current), id: \.start) { month in
                 Section {
                     ForEach(month.runs) { run in
                         Button {
@@ -55,7 +57,7 @@ struct HistoryView: View {
                         }
                     }
                 } header: {
-                    Text(month.month.formatted(.dateTime.month(.wide).year()).uppercased())
+                    Text(RunFormat.monthHeader(month.start))
                         .font(Theme.Typography.label)
                         .tracking(Theme.Typography.labelTracking)
                         .foregroundStyle(Theme.Colors.textSecondary)
@@ -71,7 +73,7 @@ struct HistoryView: View {
         let totals = RunTotals(runs, distance: \.distance, movingTime: \.movingTime)
         return HStack(spacing: 12) {
             TotalTile(label: "TOTAL", value: RunFormat.kilometres(totals.distance), unit: "KM")
-            TotalTile(label: "RUNS", value: "\(totals.runs)", unit: nil)
+            TotalTile(label: "RUNS", value: "\(totals.runCount)", unit: nil)
             TotalTile(label: "AVG PACE", value: RunFormat.pace(totals.averagePace), unit: "/KM")
         }
     }
@@ -79,7 +81,11 @@ struct HistoryView: View {
     /// Deletes `run` for good; every total follows at once, as they're read from the store.
     private func delete(_ run: Run) {
         modelContext.delete(run)
-        try? modelContext.save()
+        do {
+            try modelContext.save()
+        } catch {
+            logger.error("Couldn't delete the Run: \(error)")
+        }
     }
 }
 
@@ -166,25 +172,6 @@ private struct CardMetric: View {
                 .font(.system(size: 20, weight: .heavy).monospacedDigit())
                 .foregroundStyle(Theme.Colors.textPrimary)
         }
-    }
-}
-
-/// The empty state on Home and History before any Run is saved.
-struct NoRunsYet: View {
-    let message: String
-
-    var body: some View {
-        VStack(spacing: 6) {
-            Text("No runs yet")
-                .font(.headline)
-                .foregroundStyle(Theme.Colors.textPrimary)
-            Text(message)
-                .font(.subheadline)
-                .foregroundStyle(Theme.Colors.textSecondary)
-                .multilineTextAlignment(.center)
-        }
-        .padding(24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
