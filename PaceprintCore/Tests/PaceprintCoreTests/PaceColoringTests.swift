@@ -129,4 +129,13 @@ struct PaceColoringTests {
         #expect(PaceColoring.stretches(of: route, pauses: []).isEmpty)
         #expect(PaceColoring.pieces(of: route, pauses: [], averagePace: average).isEmpty)
     }
+
+    @Test("A Pace color compares a Pace with the Run's Average pace, as for Splits")
+    func paceColor() {
+        let average = Pace(secondsPerMetre: 0.36)
+
+        #expect(abs(PaceColor(Pace(secondsPerMetre: 0.345), comparedWith: average).position - 0.25) < 1e-9)
+        #expect(PaceColor(Pace(secondsPerMetre: 0.5), comparedWith: average) == PaceColor(position: 1))
+        #expect(PaceColor(Pace(secondsPerMetre: 0.345), comparedWith: nil) == .average)
+    }
 }

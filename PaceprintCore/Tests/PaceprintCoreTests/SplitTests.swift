@@ -28,7 +28,7 @@ struct SplitTests {
     func kilometres() {
         let tracker = RunTracker(runStart: start, points: steady(to: 2_500), pauses: [])
 
-        let splits = tracker.splits(per: .kilometers)
+        let splits = tracker.splits(per: .kilometers, until: tracker.points.last!.timestamp)
 
         #expect(splits.map(\.number) == [1, 2, 3])
         #expect(splits.map(\.isPartial) == [false, false, true])
@@ -42,7 +42,7 @@ struct SplitTests {
     func miles() {
         let tracker = RunTracker(runStart: start, points: steady(to: 2_000), pauses: [])
 
-        let splits = tracker.splits(per: .miles)
+        let splits = tracker.splits(per: .miles, until: tracker.points.last!.timestamp)
 
         #expect(splits.count == 2)
         #expect(splits[0].distance == 1_609.344)
@@ -60,7 +60,7 @@ struct SplitTests {
         let pause = Pause(start: start + 180, end: start + 240)
         let tracker = RunTracker(runStart: start, points: before + [paused] + after, pauses: [pause])
 
-        let splits = tracker.splits(per: .kilometers)
+        let splits = tracker.splits(per: .kilometers, until: tracker.points.last!.timestamp)
 
         #expect(splits.map { $0.movingTime.rounded() } == [360, 72])
         #expect(splits.map { $0.cumulativeMovingTime.rounded() } == [360, 432])
@@ -70,7 +70,7 @@ struct SplitTests {
     func beforeFirstPoint() {
         let tracker = RunTracker(runStart: start, points: steady(to: 1_000, at: 10), pauses: [])
 
-        let splits = tracker.splits(per: .kilometers)
+        let splits = tracker.splits(per: .kilometers, until: tracker.points.last!.timestamp)
 
         #expect(splits.map { $0.movingTime.rounded() } == [370])
     }
@@ -79,7 +79,7 @@ struct SplitTests {
     func onlyPartial() {
         let tracker = RunTracker(runStart: start, points: steady(to: 400), pauses: [])
 
-        let splits = tracker.splits(per: .kilometers)
+        let splits = tracker.splits(per: .kilometers, until: tracker.points.last!.timestamp)
 
         #expect(splits.count == 1)
         #expect(splits.first?.isPartial == true)
@@ -90,22 +90,45 @@ struct SplitTests {
     func noPartial() {
         let tracker = RunTracker(runStart: start, points: steady(to: 2_000), pauses: [])
 
-        #expect(tracker.splits(per: .kilometers).map(\.isPartial) == [false, false])
+        #expect(tracker.splits(per: .kilometers, until: tracker.points.last!.timestamp).map(\.isPartial) == [false, false])
+    }
+
+    @Test("The last Split runs to Stop, so its cumulative Moving time is the Run's TIME")
+    func lastSplitRunsToStop() {
+        let tracker = RunTracker(runStart: start, points: steady(to: 1_500), pauses: [])
+
+        let splits = tracker.splits(per: .kilometers, until: start + 545)
+
+        #expect(splits.map { $0.movingTime.rounded() } == [360, 185])
+        #expect(splits.last?.cumulativeMovingTime == 545)
+    }
+
+    @Test("A leftover under 10 m isn't a Partial split")
+    func tinyLeftover() {
+        let tracker = RunTracker(runStart: start, points: steady(to: 1_000) + [point(1_008, 363)], pauses: [])
+
+        let splits = tracker.splits(per: .kilometers, until: start + 363)
+
+        #expect(splits.map(\.isPartial) == [false])
+        #expect(splits.last?.cumulativeMovingTime == 363)
+    }
+
+    @Test("A Route ending exactly on a whole unit cuts cleanly, whatever the floating point", arguments: DistanceUnit.allCases, 1...5)
+    func exactMultiple(unit: DistanceUnit, units: Int) {
+        let total = Double(units) * unit.metresPerUnit
+        let points = stride(from: 0.0, to: total, by: 10).map { point($0, $0 * 0.36) } + [point(total, total * 0.36)]
+        let tracker = RunTracker(runStart: start, points: points, pauses: [])
+
+        let splits = tracker.splits(per: unit, until: points.last!.timestamp)
+
+        #expect(splits.count == units)
+        #expect(splits.allSatisfy { !$0.isPartial && $0.movingTime > 0 })
     }
 
     @Test("A Route covering no distance has no Splits")
     func noDistance() {
         let tracker = RunTracker(runStart: start, points: [point(0, 5), point(0, 30)], pauses: [])
 
-        #expect(tracker.splits(per: .kilometers).isEmpty)
-    }
-
-    @Test("A Split's Pace color compares its Pace with the Run's Average pace")
-    func paceColor() {
-        let average = Pace(secondsPerMetre: 0.36)
-
-        #expect(abs(PaceColor(Pace(secondsPerMetre: 0.345), comparedWith: average).position - 0.25) < 1e-9)
-        #expect(PaceColor(Pace(secondsPerMetre: 0.5), comparedWith: average) == PaceColor(position: 1))
-        #expect(PaceColor(Pace(secondsPerMetre: 0.345), comparedWith: nil) == .average)
+        #expect(tracker.splits(per: .kilometers, until: tracker.points.last!.timestamp).isEmpty)
     }
 }

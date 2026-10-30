@@ -3,12 +3,12 @@ import SwiftUI
 /// Where the Place name will go: for now the Run's weekday, over its date and time.
 struct RunHeadline: View {
     let run: Run
-    let size: Font
+    let font: Font
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(run.startDate, format: .dateTime.weekday(.wide))
-                .font(size)
+                .font(font)
                 .foregroundStyle(Theme.Colors.textPrimary)
                 .shadow(color: .black.opacity(0.4), radius: 6, y: 2)
             Text(run.startDate.formatted(.dateTime.day().month(.abbreviated).year().hour().minute()).uppercased())

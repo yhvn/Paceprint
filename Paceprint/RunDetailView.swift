@@ -6,7 +6,7 @@ import SwiftUI
 struct RunDetailView: View {
     let run: Run
     @Environment(\.dismiss) private var dismiss
-    /// Cut from the Route once the screen appears, so a change of units re-cuts every Run.
+    /// Cut from the Route each time the screen appears, in the units shown.
     @State private var splits: [Split] = []
 
     /// Kilometres until Settings lets the runner choose.
@@ -18,10 +18,11 @@ struct RunDetailView: View {
             ZStack(alignment: .top) {
                 routeStrip
                 VStack(alignment: .leading, spacing: 0) {
-                    RunHeadline(run: run, size: .system(size: 36, weight: .heavy))
+                    RunHeadline(run: run, font: .system(size: 36, weight: .heavy))
                     RunMetrics(run: run, large: .lg, small: .md)
                         .padding(.top, 28)
-                    if !wholeSplits.isEmpty {
+                    // A chart needs two whole Splits to draw a line.
+                    if wholeSplits.count >= 2 {
                         paceChart
                             .padding(.top, 36)
                     }
@@ -41,7 +42,7 @@ struct RunDetailView: View {
         .background(Theme.Colors.inkBlack)
         .preferredColorScheme(.dark)
         .task {
-            splits = (try? run.resumedTracker().splits(per: unit)) ?? []
+            splits = (try? run.resumedTracker().splits(per: unit, until: run.endDate)) ?? []
         }
     }
 
@@ -85,27 +86,42 @@ struct RunDetailView: View {
         splits.filter { !$0.isPartial }
     }
 
-    private func seconds(_ split: Split) -> Double {
+    private func secondsPerUnit(_ split: Split) -> Double {
         split.pace.seconds(per: unit)
     }
 
-    /// The slowest and fastest whole Split, in seconds per unit; never a range of zero.
+    /// The fastest to the slowest whole Split, in seconds per unit; never a range of zero.
     private var paceRange: ClosedRange<Double> {
-        let paces = wholeSplits.map(seconds)
+        let paces = wholeSplits.map(secondsPerUnit)
         guard let fastest = paces.min(), let slowest = paces.max() else { return 0...1 }
         return fastest == slowest ? fastest - 10...slowest + 10 : fastest...slowest
     }
 
-    private func color(_ split: Split) -> Color {
+    /// Where `split` sits from the fastest (0) to the slowest (1) whole Split; the Partial split is held inside.
+    private func placeInRange(_ split: Split) -> Double {
+        let fraction = (secondsPerUnit(split) - paceRange.lowerBound) / (paceRange.upperBound - paceRange.lowerBound)
+        return min(max(fraction, 0), 1)
+    }
+
+    private func paceColor(_ split: Split) -> Color {
         palette.color(for: PaceColor(split.pace, comparedWith: run.averagePace))
+    }
+
+    /// The chart's line and fill: the palette a quarter of the way from fast to slow, as in the design.
+    private var lineColor: Color {
+        palette.color(for: PaceColor(position: 0.25))
+    }
+
+    private func formattedPace(secondsPerUnit seconds: Double) -> String {
+        RunFormat.pace(Pace(secondsPerMetre: seconds / unit.metresPerUnit), per: unit)
     }
 
     private var paceChart: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline) {
-                label("PACE BY KM")
+                label("PACE BY \(unit.abbreviation)")
                 Spacer()
-                label("\(RunFormat.pace(Pace(secondsPerMetre: paceRange.lowerBound / unit.metresPerUnit))) – \(RunFormat.pace(Pace(secondsPerMetre: paceRange.upperBound / unit.metresPerUnit)))")
+                label("\(formattedPace(secondsPerUnit: paceRange.lowerBound)) – \(formattedPace(secondsPerUnit: paceRange.upperBound))")
                     .foregroundStyle(Theme.Colors.textTertiary)
             }
             // Slower Splits sit higher, as in the design.
@@ -113,31 +129,28 @@ struct RunDetailView: View {
                 AreaMark(
                     x: .value("Split", split.number),
                     yStart: .value("Pace", paceRange.lowerBound),
-                    yEnd: .value("Pace", seconds(split))
+                    yEnd: .value("Pace", secondsPerUnit(split))
                 )
-                .foregroundStyle(LinearGradient(
-                    colors: [palette.color(for: PaceColor(position: 0.25)).opacity(0.25), .clear],
-                    startPoint: .top,
-                    endPoint: .bottom
-                ))
-                LineMark(x: .value("Split", split.number), y: .value("Pace", seconds(split)))
-                    .foregroundStyle(palette.color(for: PaceColor(position: 0.25)))
+                .foregroundStyle(LinearGradient(colors: [lineColor.opacity(0.25), .clear], startPoint: .top, endPoint: .bottom))
+                LineMark(x: .value("Split", split.number), y: .value("Pace", secondsPerUnit(split)))
+                    .foregroundStyle(lineColor)
                     .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-                PointMark(x: .value("Split", split.number), y: .value("Pace", seconds(split)))
+                PointMark(x: .value("Split", split.number), y: .value("Pace", secondsPerUnit(split)))
                     .symbol {
                         Circle()
                             .fill(.white)
-                            .stroke(color(split), lineWidth: 1.5)
+                            .stroke(paceColor(split), lineWidth: 1.5)
                             .frame(width: 6, height: 6)
                     }
-                    .accessibilityLabel("KM \(split.number)")
-                    .accessibilityValue(RunFormat.pace(split.pace))
+                    .accessibilityLabel("\(unit.spokenName.capitalized) \(split.number)")
+                    .accessibilityValue("\(RunFormat.pace(split.pace, per: unit)) per \(unit.spokenName)")
             }
             .chartXAxis(.hidden)
             .chartYAxis(.hidden)
             .chartYScale(domain: paceRange)
-            .chartXScale(domain: 1...max(2, wholeSplits.count))
+            .chartXScale(domain: 1...wholeSplits.count)
             .frame(height: 110)
+            .accessibilityLabel("Pace by \(unit.spokenName)")
         }
     }
 
@@ -158,13 +171,13 @@ struct RunDetailView: View {
 
     private func splitRow(_ split: Split) -> some View {
         HStack(spacing: 12) {
-            Text(split.isPartial ? "\(RunFormat.kilometres(split.distance)) KM" : "KM \(split.number)")
+            Text(split.isPartial ? "\(RunFormat.distance(split.distance, in: unit)) \(unit.abbreviation)" : "\(unit.abbreviation) \(split.number)")
                 .font(.system(size: 11, weight: .bold))
                 .tracking(1.6)
                 .foregroundStyle(Theme.Colors.textSecondary)
                 .frame(width: 64, alignment: .leading)
             bar(split)
-            Text(RunFormat.pace(split.pace))
+            Text(RunFormat.pace(split.pace, per: unit))
                 .font(.system(size: 15, weight: .heavy).monospacedDigit())
                 .foregroundStyle(Theme.Colors.textPrimary)
                 .frame(width: 52, alignment: .trailing)
@@ -176,18 +189,21 @@ struct RunDetailView: View {
         }
         .padding(.vertical, 11)
         .padding(.horizontal, 4)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(split.isPartial
+            ? "Last \(RunFormat.distance(split.distance, in: unit)) \(unit.spokenName)s"
+            : "\(unit.spokenName.capitalized) \(split.number)")
+        .accessibilityValue("pace \(RunFormat.pace(split.pace, per: unit)) per \(unit.spokenName), moving time \(RunFormat.time(split.cumulativeMovingTime))")
     }
 
-    /// Longer for slower Splits; the Partial split's bar isn't Pace-colored.
+    /// Longer for slower Splits, colored by Pace.
     private func bar(_ split: Split) -> some View {
-        let fraction = min(max((seconds(split) - paceRange.lowerBound) / (paceRange.upperBound - paceRange.lowerBound), 0), 1)
-        return GeometryReader { geometry in
+        GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 Capsule().fill(Color.white.opacity(0.06))
                 Capsule()
-                    .fill(split.isPartial ? Theme.Colors.textDisabled : color(split))
-                    .frame(width: geometry.size.width * (0.2 + fraction * 0.75))
+                    .fill(paceColor(split))
+                    .frame(width: geometry.size.width * (0.2 + placeInRange(split) * 0.75))
             }
         }
         .frame(height: 6)

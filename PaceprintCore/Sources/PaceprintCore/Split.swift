@@ -18,47 +18,59 @@ public struct Split: Equatable, Sendable {
 }
 
 extension RunTracker {
-    /// A Partial split shorter than this is rounding noise, not a Split.
-    static let shortestPartialSplit = 1.0
+    /// A leftover shorter than this isn't worth its own row; its time goes to the Split before it.
+    static let shortestPartialSplit = 10.0
 
-    /// The Route cut into Splits of one `unit` each, then the Partial split left over. Pauses don't
-    /// count toward any Split's Moving time; the time before the first point counts toward the first,
-    /// as it does toward TIME.
-    public func splits(per unit: DistanceUnit) -> [Split] {
-        // Moving time against distance covered, from Start; both only ever grow.
-        let samples = [(distance: 0.0, movingTime: 0.0)]
-            + points.map { (distance: $0.cumulativeDistance, movingTime: movingTime(at: $0.timestamp)) }
+    /// Moving time against distance covered; both only ever grow along a Run.
+    private struct Sample {
+        let distance: Double
+        let movingTime: TimeInterval
+    }
+
+    /// The Route cut into Splits of one `unit` each, then the Partial split left over, for a Run
+    /// stopped at `stop`. Pauses don't count toward any Split's Moving time. The time before the
+    /// first point counts toward the first Split and the time after the last toward the last, as
+    /// both count toward TIME.
+    public func splits(per unit: DistanceUnit, until stop: Date) -> [Split] {
+        let samples = [Sample(distance: 0, movingTime: 0)]
+            + points.map { Sample(distance: $0.cumulativeDistance, movingTime: movingTime(at: $0.timestamp)) }
         let total = distance
-        let wholeSplits = Int((total / unit.metresPerUnit).rounded(.down))
-
-        var splits: [Split] = []
-        var previousEnd = 0.0
-        func addSplit(to end: Double, distance: Double, isPartial: Bool) {
-            let endTime = Self.movingTime(atDistance: end, in: samples)
-            splits.append(Split(
-                number: splits.count + 1,
-                distance: distance,
-                movingTime: endTime - previousEnd,
-                cumulativeMovingTime: endTime,
-                isPartial: isPartial
-            ))
-            previousEnd = endTime
-        }
-        for number in stride(from: 1, through: wholeSplits, by: 1) {
-            addSplit(to: Double(number) * unit.metresPerUnit, distance: unit.metresPerUnit, isPartial: false)
+        var wholeSplits = Int(total / unit.metresPerUnit)
+        // Floating point can round a hair under a whole unit up to it.
+        if Double(wholeSplits) * unit.metresPerUnit > total {
+            wholeSplits -= 1
         }
         let rest = total - Double(wholeSplits) * unit.metresPerUnit
-        if rest >= Self.shortestPartialSplit {
-            addSplit(to: total, distance: rest, isPartial: true)
+        let hasPartialSplit = rest >= Self.shortestPartialSplit
+
+        var ends = (0..<wholeSplits).map { (distance: Double($0 + 1) * unit.metresPerUnit, isPartial: false) }
+        if hasPartialSplit {
+            ends.append((distance: total, isPartial: true))
+        }
+
+        var splits: [Split] = []
+        var previousEnd: (distance: Double, movingTime: TimeInterval) = (0, 0)
+        for (index, end) in ends.enumerated() {
+            let isLast = index == ends.count - 1
+            let endTime = isLast ? movingTime(at: stop) : Self.movingTime(atDistance: end.distance, in: samples)
+            splits.append(Split(
+                number: index + 1,
+                distance: end.distance - previousEnd.distance,
+                movingTime: endTime - previousEnd.movingTime,
+                cumulativeMovingTime: endTime,
+                isPartial: end.isPartial
+            ))
+            previousEnd = (end.distance, endTime)
         }
         return splits
     }
 
     /// The Moving time when `distance` was first reached, interpolated between samples.
-    private static func movingTime(atDistance distance: Double, in samples: [(distance: Double, movingTime: Double)]) -> Double {
-        guard let after = samples.firstIndex(where: { $0.distance >= distance }), after > 0 else {
-            return samples[0].movingTime
+    private static func movingTime(atDistance distance: Double, in samples: [Sample]) -> TimeInterval {
+        guard let after = samples.firstIndex(where: { $0.distance >= distance }) else {
+            return samples[samples.count - 1].movingTime
         }
+        guard after > 0 else { return samples[0].movingTime }
         let a = samples[after - 1], b = samples[after]
         let fraction = (distance - a.distance) / (b.distance - a.distance)
         return a.movingTime + fraction * (b.movingTime - a.movingTime)

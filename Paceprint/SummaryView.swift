@@ -28,7 +28,7 @@ struct SummaryView: View {
             VStack(alignment: .leading, spacing: 28) {
                 topBar
                 Spacer()
-                RunHeadline(run: run, size: Theme.Typography.placeName)
+                RunHeadline(run: run, font: Theme.Typography.placeName)
                 RunMetrics(run: run, large: .xl, small: .lg)
             }
             .padding(.horizontal, 22)
