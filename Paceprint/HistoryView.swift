@@ -4,11 +4,12 @@ import SwiftUI
 /// History: every saved Run, newest first. A Run still being recorded isn't one.
 struct HistoryView: View {
     @Query(filter: Run.finished, sort: \Run.startDate, order: .reverse) private var runs: [Run]
+    @State private var openRun: Run?
 
     var body: some View {
         List(runs) { run in
-            NavigationLink {
-                SummaryView(run: run)
+            Button {
+                openRun = run
             } label: {
                 HStack {
                     Text(run.startDate, format: .dateTime.month(.abbreviated).day().hour().minute())
@@ -21,6 +22,7 @@ struct HistoryView: View {
             }
         }
         .navigationTitle("History")
+        .fullScreenCover(item: $openRun) { SummaryView(run: $0) }
     }
 }
 

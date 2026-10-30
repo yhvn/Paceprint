@@ -3,8 +3,6 @@ import Foundation
 /// A Run in progress: builds its Route as fixes arrive, dropping noisy ones,
 /// and keeps its Pauses and running distance.
 public struct RunTracker: Sendable {
-    /// Distance below which Average pace is too unsteady to show.
-    static let averagePaceMinimumDistance = 100.0
     /// How much recent Moving time Current pace covers.
     static let currentPaceWindow: TimeInterval = 30
     /// Current pace slower than this, 20:00 /km, isn't shown.
@@ -66,8 +64,7 @@ public struct RunTracker: Sendable {
 
     /// Moving time over distance, or nil until 0.1 km.
     public func averagePace(at date: Date) -> Pace? {
-        guard distance >= Self.averagePaceMinimumDistance else { return nil }
-        return Pace(secondsPerMetre: movingTime(at: date) / distance)
+        Pace.average(movingTime: movingTime(at: date), distance: distance)
     }
 
     /// The Pace over the last 30 s of Moving time up to the latest point, or nil for the first 30 s,

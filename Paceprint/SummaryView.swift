@@ -7,7 +7,7 @@ import SwiftUI
 struct SummaryView: View {
     let run: Run
     @Environment(\.dismiss) private var dismiss
-    /// Worked out once Summary appears, not when it's created: History creates one per row.
+    /// Worked out once Summary appears; nil until then, or if the Route has nothing to draw.
     @State private var route: RouteDrawing?
 
     var body: some View {
@@ -41,7 +41,6 @@ struct SummaryView: View {
             .padding(.horizontal, 22)
             .padding(.bottom, 32)
         }
-        .toolbar(.hidden, for: .navigationBar)
         .preferredColorScheme(.dark)
         .task {
             route = RouteDrawing(run, palette: .selected)
@@ -49,7 +48,7 @@ struct SummaryView: View {
     }
 
     private func map(_ route: RouteDrawing) -> some View {
-        Map(initialPosition: route.camera ?? .automatic) {
+        Map(initialPosition: route.camera) {
             // A faint white halo under the colored pieces, so the line reads on any map.
             ForEach(route.stretches.indices, id: \.self) { index in
                 MapPolyline(coordinates: route.stretches[index])
@@ -59,12 +58,10 @@ struct SummaryView: View {
                 MapPolyline(coordinates: route.pieces[index].coordinates)
                     .stroke(route.pieces[index].color, style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
             }
-            if let start = route.start, let end = route.end {
-                Annotation("Start", coordinate: start, anchor: .center) { EndpointDot(color: Theme.Colors.liveRed) }
-                    .annotationTitles(.hidden)
-                Annotation("Finish", coordinate: end, anchor: .center) { EndpointDot(color: Theme.Colors.paceFast) }
-                    .annotationTitles(.hidden)
-            }
+            Annotation("Start", coordinate: route.start, anchor: .center) { EndpointDot(color: Theme.Colors.liveRed) }
+                .annotationTitles(.hidden)
+            Annotation("Finish", coordinate: route.end, anchor: .center) { EndpointDot(color: Theme.Colors.paceFast) }
+                .annotationTitles(.hidden)
         }
         .mapStyle(.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll))
         .mapControls {}
@@ -115,7 +112,7 @@ struct SummaryView: View {
                 Metric(label: "TIME", value: RunFormat.time(run.movingTime), size: .xl, alignment: .leading)
             }
             GridRow {
-                Metric(label: "AVG PACE /KM", value: RunFormat.pace(route?.averagePace), size: .lg, alignment: .leading)
+                Metric(label: "AVG PACE /KM", value: RunFormat.pace(run.averagePace), size: .lg, alignment: .leading)
                 // Calories arrive with Settings, which asks for body weight.
                 Metric(label: "CAL (EST)", value: "—", size: .lg, alignment: .leading)
             }
@@ -133,29 +130,26 @@ private struct RouteDrawing {
 
     let stretches: [[CLLocationCoordinate2D]]
     let pieces: [Piece]
-    let start: CLLocationCoordinate2D?
-    let end: CLLocationCoordinate2D?
-    let averagePace: Pace?
+    let start: CLLocationCoordinate2D
+    let end: CLLocationCoordinate2D
     /// Frames the Route in the top half of the screen, clear of the place name and metrics below.
-    let camera: MapCameraPosition?
+    let camera: MapCameraPosition
 
-    /// Nil if the Route can't be read.
+    /// Nil if the Route can't be read, or has nothing to draw.
     init?(_ run: Run, palette: RoutePalette) {
-        guard let tracker = try? run.resumedTracker() else { return nil }
-        let averagePace = tracker.averagePace(at: run.endDate)
-        let stretches = PaceColoring.stretches(of: tracker.points, pauses: tracker.pauses)
+        guard let route = try? run.decodedRoute() else { return nil }
+        let stretches = PaceColoring.stretches(of: route, pauses: run.pauses)
+        guard let start = stretches.first?.first, let end = stretches.last?.last else { return nil }
         self.stretches = stretches.map { $0.map(\.coordinate) }
-        pieces = PaceColoring.pieces(of: tracker.points, pauses: tracker.pauses, averagePace: averagePace).map {
+        pieces = PaceColoring.pieces(of: route, pauses: run.pauses, averagePace: run.averagePace).map {
             Piece(coordinates: $0.points.map(\.coordinate), color: palette.color(for: $0.color))
         }
-        start = stretches.first?.first?.coordinate
-        end = stretches.last?.last?.coordinate
-        self.averagePace = averagePace
+        self.start = start.coordinate
+        self.end = end.coordinate
         camera = Self.camera(framing: stretches.joined().map(\.coordinate))
     }
 
-    private static func camera(framing coordinates: [CLLocationCoordinate2D]) -> MapCameraPosition? {
-        guard !coordinates.isEmpty else { return nil }
+    private static func camera(framing coordinates: [CLLocationCoordinate2D]) -> MapCameraPosition {
         let bounds = coordinates.map(MKMapPoint.init).reduce(MKMapRect.null) {
             $0.union(MKMapRect(origin: $1, size: MKMapSize(width: 0, height: 0)))
         }
@@ -178,6 +172,12 @@ private struct EndpointDot: View {
             .frame(width: 12, height: 12)
             .padding(3)
             .background(.white, in: Circle())
+    }
+}
+
+private extension Run {
+    var averagePace: Pace? {
+        Pace.average(movingTime: movingTime, distance: distance)
     }
 }
 

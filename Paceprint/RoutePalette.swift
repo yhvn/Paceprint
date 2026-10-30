@@ -2,7 +2,7 @@ import PaceprintCore
 import SwiftUI
 
 /// The colors a Route's Pace colors are drawn in: a fast, a middle (the Average pace) and a slow
-/// color, blended in between. The runner picks one of the four in Settings.
+/// color, blended in between. Settings will let the runner pick one of the four.
 enum RoutePalette: CaseIterable {
     case pace, electric, ember, mono
 
