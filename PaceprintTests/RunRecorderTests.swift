@@ -245,6 +245,19 @@ struct RunRecorderTests {
         #expect(abs(recorder.distance - 40 * stepMetres) < 0.01)
     }
 
+    @Test("A checkpoint that can't be read isn't recovered, and isn't left in the store")
+    func unreadableCheckpoint() throws {
+        let broken = Run(startDate: clock.now)
+        broken.routeData = Data([99])
+        container.mainContext.insert(broken)
+
+        let recorder = recorder(ScriptedLocationSource(script: []))
+        recorder.recoverUnfinishedRun(relaunchedInBackground: false)
+
+        #expect(!recorder.isRecording)
+        #expect(try allRuns().isEmpty)
+    }
+
     @Test("Stop on a short Run asks to discard it; Discard saves nothing")
     func discardShortRun() async throws {
         let recorder = recorder(ScriptedLocationSource(script: [fix(in: 1)]))

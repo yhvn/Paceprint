@@ -11,8 +11,9 @@ public struct RunTracker: Sendable {
     static let currentPaceSlowest = Pace(secondsPerMetre: 1.2)
     /// GPS counts as weak once no point has been kept for this long.
     static let weakGPSAfter: TimeInterval = 10
-    /// A Run shorter than this, or than `shortestMovingTime`, is offered for discarding on Stop.
+    /// A Run covering less than this is offered for discarding on Stop.
     static let shortestDistance = 100.0
+    /// A Run with less Moving time than this is offered for discarding on Stop.
     static let shortestMovingTime: TimeInterval = 60
 
     public let runStart: Date

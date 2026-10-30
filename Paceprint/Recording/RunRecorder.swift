@@ -35,6 +35,7 @@ final class RunRecorder {
     @ObservationIgnored private var run: Run?
     @ObservationIgnored private var isStarting = false
     @ObservationIgnored private var recording: Task<Void, Never>?
+    @ObservationIgnored private var checkpoints: Task<Void, Never>?
 
     @ObservationIgnored private let source: any LocationSource
     @ObservationIgnored private let modelContext: ModelContext
@@ -60,9 +61,9 @@ final class RunRecorder {
         }
 
         let tracker = RunTracker(runStart: now())
-        let run = Run(checkpointOf: tracker, at: now())
+        let run = Run(startDate: tracker.runStart)
         modelContext.insert(run)
-        record(run, tracker)
+        record(into: run, from: tracker)
     }
 
     /// Picks up a Run left unfinished when the app was killed, if there is one.
@@ -71,22 +72,33 @@ final class RunRecorder {
     /// Pause, and the runner chooses Resume or Stop.
     func recoverUnfinishedRun(relaunchedInBackground: Bool) {
         guard !isRecording else { return }
-        var descriptor = FetchDescriptor<Run>(predicate: #Predicate { !$0.isFinished }, sortBy: [SortDescriptor(\.startDate, order: .reverse)])
+        var descriptor = FetchDescriptor<Run>(predicate: Run.unfinished, sortBy: [SortDescriptor(\.startDate, order: .reverse)])
         descriptor.fetchLimit = 1
+        let run: Run
         do {
-            guard let run = try modelContext.fetch(descriptor).first else { return }
+            guard let found = try modelContext.fetch(descriptor).first else { return }
+            run = found
+        } catch {
+            logger.error("Couldn't look for an unfinished Run: \(error)")
+            return
+        }
+        do {
             var tracker = try run.resumedTracker()
             if !relaunchedInBackground {
                 tracker.pause(at: run.endDate)
             }
-            record(run, tracker)
+            record(into: run, from: tracker)
         } catch {
+            // A checkpoint that can't be read can't be recovered; don't leave it in the store.
             logger.error("Couldn't recover the unfinished Run: \(error)")
+            modelContext.delete(run)
+            persist()
         }
     }
 
-    /// Records into `run`, starting from `tracker`: checkpoints it now, then consumes location events.
-    private func record(_ run: Run, _ tracker: RunTracker) {
+    /// Records into `run`, starting from `tracker`: checkpoints it now, then consumes location events,
+    /// checkpointing at least every 10 s, even while none arrive.
+    private func record(into run: Run, from tracker: RunTracker) {
         self.run = run
         self.tracker = tracker
         checkpoint()
@@ -94,6 +106,12 @@ final class RunRecorder {
         recording = Task { [weak self] in
             for await event in events {
                 self?.handle(event)
+            }
+        }
+        checkpoints = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(Self.checkpointInterval))
+                self?.checkpointIfDue()
             }
         }
     }
@@ -174,13 +192,15 @@ final class RunRecorder {
         do {
             try modelContext.save()
         } catch {
-            logger.error("Couldn't save the Run: \(error)")
+            logger.error("Couldn't write to the Run store: \(error)")
         }
     }
 
     private func end() {
         recording?.cancel()
         recording = nil
+        checkpoints?.cancel()
+        checkpoints = nil
         run = nil
         tracker = nil
         isAccessLost = false

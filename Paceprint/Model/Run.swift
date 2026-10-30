@@ -8,9 +8,9 @@ final class Run {
     var startDate: Date
     /// When the Run was stopped; for an unfinished Run, when it was last checkpointed.
     var endDate: Date
-    /// Seconds from Start to Stop, Pauses included.
+    /// Seconds from Start to `endDate`, Pauses included.
     var elapsedTime: TimeInterval
-    /// Seconds from Start to Stop with Pauses removed: the TIME shown.
+    /// Seconds from Start to `endDate` with Pauses removed: the TIME shown.
     var movingTime: TimeInterval = 0
     /// Every Pause, the source of truth for Moving time. All ended once the Run is finished.
     var pauses: [Pause] = []
@@ -27,15 +27,18 @@ final class Run {
         #Predicate { $0.isFinished }
     }
 
-    /// An unfinished Run holding what `tracker` has recorded up to `date`.
-    init(checkpointOf tracker: RunTracker, at date: Date) {
-        startDate = tracker.runStart
-        endDate = date
-        elapsedTime = date.timeIntervalSince(tracker.runStart)
-        movingTime = tracker.movingTime(at: date)
-        pauses = tracker.pauses
-        distance = tracker.distance
-        routeData = RouteEncoding.encode(tracker.points)
+    /// Runs still being recorded, or left behind when the app was killed.
+    static var unfinished: Predicate<Run> {
+        #Predicate { !$0.isFinished }
+    }
+
+    /// An unfinished Run started at `startDate`, with nothing recorded yet.
+    init(startDate: Date) {
+        self.startDate = startDate
+        endDate = startDate
+        elapsedTime = 0
+        distance = 0
+        routeData = RouteEncoding.encode([])
         isFinished = false
     }
 
