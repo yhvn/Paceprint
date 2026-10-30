@@ -19,12 +19,12 @@ struct RouteMap: View {
             }
         }
         .task {
-            route = RouteDrawing(run, palette: .selected, roomBelow: roomBelow)
+            route = RouteDrawing(run, palette: .selected)
         }
     }
 
     private func map(_ route: RouteDrawing) -> some View {
-        Map(initialPosition: route.camera) {
+        Map(initialPosition: route.camera(roomBelow: roomBelow)) {
             // A faint white halo under the colored pieces, so the line reads on any map.
             ForEach(route.stretches.indices, id: \.self) { index in
                 MapPolyline(coordinates: route.stretches[index])
@@ -44,8 +44,8 @@ struct RouteMap: View {
     }
 }
 
-/// What a RouteMap draws for a Run: its Route cut into stretches and Pace-colored pieces.
-private struct RouteDrawing {
+/// What's drawn for a Run's Route: its stretches and Pace-colored pieces, start and finish.
+struct RouteDrawing {
     struct Piece {
         let coordinates: [CLLocationCoordinate2D]
         let color: Color
@@ -55,11 +55,9 @@ private struct RouteDrawing {
     let pieces: [Piece]
     let start: CLLocationCoordinate2D
     let end: CLLocationCoordinate2D
-    /// Frames the Route, with `roomBelow` times its height of empty map below it.
-    let camera: MapCameraPosition
 
     /// Nil if the Route can't be read, or has nothing to draw.
-    init?(_ run: Run, palette: RoutePalette, roomBelow: Double) {
+    init?(_ run: Run, palette: RoutePalette) {
         guard let route = try? run.decodedRoute() else { return nil }
         let stretches = PaceColoring.stretches(of: route, pauses: run.pauses)
         guard let start = stretches.first?.first, let end = stretches.last?.last else { return nil }
@@ -69,10 +67,11 @@ private struct RouteDrawing {
         }
         self.start = start.coordinate
         self.end = end.coordinate
-        camera = Self.camera(framing: stretches.joined().map(\.coordinate), roomBelow: roomBelow)
     }
 
-    private static func camera(framing coordinates: [CLLocationCoordinate2D], roomBelow: Double) -> MapCameraPosition {
+    /// Frames the Route, with `roomBelow` times its height of empty map below it.
+    func camera(roomBelow: Double) -> MapCameraPosition {
+        let coordinates = Array(stretches.joined())
         let bounds = coordinates.map(MKMapPoint.init).reduce(MKMapRect.null) {
             $0.union(MKMapRect(origin: $1, size: MKMapSize(width: 0, height: 0)))
         }

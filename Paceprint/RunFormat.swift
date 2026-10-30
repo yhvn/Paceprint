@@ -48,3 +48,13 @@ extension DistanceUnit {
         }
     }
 }
+
+extension RunFormat {
+    /// A Run's date on a card, e.g. "MAY 12", with the year for past years: "MAY 12, 2025".
+    static func cardDate(_ date: Date, now: Date = .now, calendar: Calendar = .current) -> String {
+        let style: Date.FormatStyle = calendar.isDate(date, equalTo: now, toGranularity: .year)
+            ? .dateTime.month(.abbreviated).day()
+            : .dateTime.month(.abbreviated).day().year()
+        return date.formatted(style).uppercased()
+    }
+}
