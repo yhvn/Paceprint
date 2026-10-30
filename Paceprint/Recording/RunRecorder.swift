@@ -26,6 +26,8 @@ final class RunRecorder {
     /// Stop was chosen on a Run too short to be worth keeping; the screen asks whether to discard it,
     /// then calls `discard()` or `save()`, or clears this to carry on.
     var isAskingToDiscard = false
+    /// The Run just stopped and saved, for Summary to show; the screen clears it when Summary closes.
+    var stoppedRun: Run?
 
     /// How often the Run in progress is written to the store, in case the app is killed.
     static let checkpointInterval: TimeInterval = 10
@@ -176,6 +178,7 @@ final class RunRecorder {
         guard let tracker else { return }
         run?.finish(tracker, at: now())
         persist()
+        stoppedRun = run
         end()
     }
 

@@ -61,8 +61,16 @@ struct ContentView: View {
         } message: { problem in
             Text(problem.message)
         }
-        .fullScreenCover(isPresented: .constant(recorder.isRecording)) {
-            ActiveRunView()
+        // The Run in progress, then its Summary once stopped and saved.
+        .fullScreenCover(isPresented: Binding(
+            get: { recorder.isRecording || recorder.stoppedRun != nil },
+            set: { if !$0 { recorder.stoppedRun = nil } }
+        )) {
+            if recorder.isRecording {
+                ActiveRunView()
+            } else if let run = recorder.stoppedRun {
+                SummaryView(run: run)
+            }
         }
         .preferredColorScheme(.dark)
     }
