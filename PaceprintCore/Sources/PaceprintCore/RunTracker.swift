@@ -119,7 +119,7 @@ public struct RunTracker: Sendable {
         let last = points.last
         // Anything covered across a Pause, even one with no fix kept inside it, counts for nothing.
         let crossesPause = last.map { last in
-            pauses.contains { $0.start <= fix.timestamp && ($0.end.map { $0 > last.timestamp } ?? true) }
+            pauses.contains { $0.falls(between: last.timestamp, and: fix.timestamp) }
         } ?? false
         guard NoiseFilter.accepts(fix, runStart: runStart, after: last, acrossPause: crossesPause) else { return nil }
 

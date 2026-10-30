@@ -15,4 +15,9 @@ public struct Pause: Codable, Equatable, Sendable {
     func contains(_ date: Date) -> Bool {
         date >= start && end.map { date < $0 } ?? true
     }
+
+    /// Whether any of this Pause falls between `earlier` and `later`, so the Route breaks between them.
+    func falls(between earlier: Date, and later: Date) -> Bool {
+        start <= later && end.map { $0 > earlier } ?? true
+    }
 }

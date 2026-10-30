@@ -272,6 +272,7 @@ struct RunRecorderTests {
         recorder.discard()
         #expect(!recorder.isRecording)
         #expect(try allRuns().isEmpty)
+        #expect(recorder.stoppedRun == nil)
     }
 
     @Test("Keeping a short Run saves it")
@@ -285,6 +286,7 @@ struct RunRecorderTests {
 
         #expect(!recorder.isRecording)
         #expect(try savedRun().elapsedTime == 30)
+        #expect(try recorder.stoppedRun === savedRun())
     }
 
     @Test("Stop on a Run of 0.1 km and 1 min saves it without asking")
@@ -300,6 +302,8 @@ struct RunRecorderTests {
         #expect(!recorder.isAskingToDiscard)
         #expect(!recorder.isRecording)
         #expect(try savedRun().movingTime == 71)
+        // Summary opens on the Run just saved.
+        #expect(try recorder.stoppedRun === savedRun())
     }
 }
 

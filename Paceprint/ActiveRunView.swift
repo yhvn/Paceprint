@@ -147,25 +147,6 @@ private struct RoundButton: View {
     }
 }
 
-private struct Metric: View {
-    let label: String
-    let value: String
-    let size: Theme.Typography.MetricSize
-
-    var body: some View {
-        VStack(spacing: 6) {
-            Text(label)
-                .font(Theme.Typography.label)
-                .tracking(Theme.Typography.labelTracking)
-                .foregroundStyle(Theme.Colors.textSecondary)
-            Text(value)
-                .font(Theme.Typography.metric(size))
-                .tracking(Theme.Typography.metricTracking(size))
-                .foregroundStyle(Theme.Colors.textPrimary)
-        }
-    }
-}
-
 #Preview {
     ActiveRunView()
         .environment(RunRecorder.preview)
