@@ -29,14 +29,29 @@ struct RunRecorderTests {
         return RunRecorder(source: source, modelContext: container.mainContext, now: { clock.now })
     }
 
-    /// A good fix `seconds` after the clock's current time.
-    private func fix(in seconds: TimeInterval) -> LocationEvent {
-        .fix(LocationFix(timestamp: clock.now + seconds, latitude: 40.78, longitude: -73.966, altitude: 30, horizontalAccuracy: 5))
+    /// A good fix `seconds` after the clock's current time, `step` steps of 0.0001° north of the start.
+    private func fix(in seconds: TimeInterval, step: Int = 0) -> LocationEvent {
+        let latitude = 40.78 + Double(step) * 0.0001
+        return .fix(LocationFix(timestamp: clock.now + seconds, latitude: latitude, longitude: -73.966, altitude: 30, horizontalAccuracy: 5))
     }
 
     private func savedRun() throws -> Run {
         let runs = try container.mainContext.fetch(FetchDescriptor<Run>())
-        return try #require(runs.count == 1 ? runs.first : nil)
+        let run = try #require(runs.count == 1 ? runs.first : nil)
+        #expect(run.isFinished)
+        return run
+    }
+
+    private func allRuns() throws -> [Run] {
+        try container.mainContext.fetch(FetchDescriptor<Run>())
+    }
+
+    /// Records 31 s of running, one step a second, as fixes arrive in real time, then leaves the Run
+    /// as if the app had been killed: only its last checkpoint, 30 s in, is in the store.
+    private func recordThenKill() async {
+        let killed = recorder(ScriptedLocationSource(script: (0...30).map { fix(in: Double($0) + 1, step: $0) }, clock: clock))
+        await killed.start()
+        await killed.waitUntilSourceFinishes()
     }
 
     @Test("Replaying a GPX Run and stopping saves the Run with its distance and Route")
@@ -103,7 +118,7 @@ struct RunRecorderTests {
         clock.advance(by: 100)
         recorder.pause()
         clock.advance(by: 50)
-        recorder.stop()
+        recorder.save()
 
         let run = try savedRun()
         #expect(run.pauses == [Pause(start: run.startDate.addingTimeInterval(100), end: run.endDate)])
@@ -187,6 +202,105 @@ struct RunRecorderTests {
         #expect(recorder.isPaused)
         #expect(!recorder.isAccessLost)
     }
+
+    @Test("A Run in progress is checkpointed as an unfinished Run, which History doesn't show")
+    func checkpointed() async throws {
+        await recordThenKill()
+
+        let run = try #require(try allRuns().first)
+        #expect(!run.isFinished)
+        // Checkpointed every 10 s: the last one, at 30 s, has the 30 fixes up to then.
+        #expect(try run.decodedRoute().count == 30)
+        #expect(run.endDate == run.startDate.addingTimeInterval(30))
+        #expect(try container.mainContext.fetch(FetchDescriptor(predicate: Run.finished)).isEmpty)
+    }
+
+    @Test("After the app is closed mid-Run, it reopens on the Run Paused, the gap recorded as a Pause")
+    func recoveredPaused() async throws {
+        await recordThenKill()
+        clock.advance(by: 100)
+
+        let recorder = recorder(ScriptedLocationSource(script: []))
+        recorder.recoverUnfinishedRun(relaunchedInBackground: false)
+
+        #expect(recorder.isRecording)
+        #expect(recorder.isPaused)
+        #expect(abs(recorder.distance - 29 * stepMetres) < 0.01)
+        #expect(recorder.movingTime == 30)
+        let run = try #require(try allRuns().first)
+        #expect(run.pauses == [Pause(start: run.startDate.addingTimeInterval(30), end: nil)])
+    }
+
+    @Test("When iOS relaunches the app in the background mid-Run, recording carries on")
+    func recoveredInBackground() async throws {
+        await recordThenKill()
+        clock.advance(by: 30)
+
+        let recorder = recorder(ScriptedLocationSource(script: [fix(in: 5, step: 40)]))
+        recorder.recoverUnfinishedRun(relaunchedInBackground: true)
+        await recorder.waitUntilSourceFinishes()
+
+        #expect(!recorder.isPaused)
+        #expect(recorder.movingTime == 61)
+        #expect(abs(recorder.distance - 40 * stepMetres) < 0.01)
+    }
+
+    @Test("A checkpoint that can't be read isn't recovered, and isn't left in the store")
+    func unreadableCheckpoint() throws {
+        let broken = Run(startDate: clock.now)
+        broken.routeData = Data([99])
+        container.mainContext.insert(broken)
+
+        let recorder = recorder(ScriptedLocationSource(script: []))
+        recorder.recoverUnfinishedRun(relaunchedInBackground: false)
+
+        #expect(!recorder.isRecording)
+        #expect(try allRuns().isEmpty)
+    }
+
+    @Test("Stop on a short Run asks to discard it; Discard saves nothing")
+    func discardShortRun() async throws {
+        let recorder = recorder(ScriptedLocationSource(script: [fix(in: 1)]))
+        await recorder.start()
+        await recorder.waitUntilSourceFinishes()
+        clock.advance(by: 30)
+
+        recorder.stop()
+        #expect(recorder.isAskingToDiscard)
+        #expect(recorder.isRecording)
+
+        recorder.discard()
+        #expect(!recorder.isRecording)
+        #expect(try allRuns().isEmpty)
+    }
+
+    @Test("Keeping a short Run saves it")
+    func keepShortRun() async throws {
+        let recorder = recorder(ScriptedLocationSource(script: [fix(in: 1)]))
+        await recorder.start()
+        clock.advance(by: 30)
+
+        recorder.stop()
+        recorder.save()
+
+        #expect(!recorder.isRecording)
+        #expect(try savedRun().elapsedTime == 30)
+    }
+
+    @Test("Stop on a Run of 0.1 km and 1 min saves it without asking")
+    func stopLongEnoughRun() async throws {
+        await recordThenKill()
+        let recorder = recorder(ScriptedLocationSource(script: [fix(in: 40, step: 40)]))
+        recorder.recoverUnfinishedRun(relaunchedInBackground: true)
+        await recorder.waitUntilSourceFinishes()
+        clock.advance(by: 40)
+
+        recorder.stop()
+
+        #expect(!recorder.isAskingToDiscard)
+        #expect(!recorder.isRecording)
+        #expect(try savedRun().movingTime == 71)
+    }
 }
 
 /// A clock the test moves by hand.
@@ -198,19 +312,38 @@ final class TestClock {
     }
 }
 
-/// Plays back a fixed list of location events, then ends.
+/// Plays back a fixed list of location events, then ends. Given a clock, it moves the clock to each
+/// fix's time as it hands the fix over, as if fixes arrived in real time.
 struct ScriptedLocationSource: LocationSource {
     var problem: LocationProblem?
     var script: [LocationEvent]
+    var clock: TestClock?
 
     func prepare() async -> LocationProblem? {
         problem
     }
 
     func events() -> AsyncStream<LocationEvent> {
-        AsyncStream { continuation in
-            script.forEach { continuation.yield($0) }
-            continuation.finish()
+        let playback = Playback(script: script, clock: clock)
+        return AsyncStream(unfolding: { await playback.next() })
+    }
+}
+
+/// The events still to play; handed over one at a time, each once the last has been handled.
+private final class Playback {
+    private var remaining: ArraySlice<LocationEvent>
+    private let clock: TestClock?
+
+    init(script: [LocationEvent], clock: TestClock?) {
+        remaining = script[...]
+        self.clock = clock
+    }
+
+    func next() -> LocationEvent? {
+        guard let event = remaining.popFirst() else { return nil }
+        if let clock, case .fix(let fix) = event {
+            clock.now = max(clock.now, fix.timestamp)
         }
+        return event
     }
 }
