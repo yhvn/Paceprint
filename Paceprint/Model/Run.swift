@@ -60,6 +60,11 @@ final class Run {
         isFinished = true
     }
 
+    /// Moving time over distance, or nil under 0.1 km.
+    var averagePace: Pace? {
+        Pace.average(movingTime: movingTime, distance: distance)
+    }
+
     func decodedRoute() throws -> [RoutePoint] {
         try RouteEncoding.decode(routeData)
     }

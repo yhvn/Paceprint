@@ -22,7 +22,7 @@ struct HistoryView: View {
             }
         }
         .navigationTitle("History")
-        .fullScreenCover(item: $openRun) { SummaryView(run: $0) }
+        .fullScreenCover(item: $openRun) { RunDetailView(run: $0) }
     }
 }
 
