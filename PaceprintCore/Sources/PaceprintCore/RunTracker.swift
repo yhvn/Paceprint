@@ -11,6 +11,9 @@ public struct RunTracker: Sendable {
     static let currentPaceSlowest = Pace(secondsPerMetre: 1.2)
     /// GPS counts as weak once no point has been kept for this long.
     static let weakGPSAfter: TimeInterval = 10
+    /// A Run shorter than this, or than `shortestMovingTime`, is offered for discarding on Stop.
+    static let shortestDistance = 100.0
+    static let shortestMovingTime: TimeInterval = 60
 
     public let runStart: Date
     public private(set) var points: [RoutePoint] = []
@@ -24,6 +27,13 @@ public struct RunTracker: Sendable {
 
     public init(runStart: Date) {
         self.runStart = runStart
+    }
+
+    /// A tracker carrying on from a Route and Pauses recorded earlier, e.g. a Run checkpointed before the app was killed.
+    public init(runStart: Date, points: [RoutePoint], pauses: [Pause]) {
+        self.runStart = runStart
+        self.points = points
+        self.pauses = pauses
     }
 
     /// Seconds from Start to `date` with Pauses removed.
@@ -46,6 +56,11 @@ public struct RunTracker: Sendable {
     /// and that isn't weak GPS. The next kept point ends it.
     public mutating func markStationary() {
         isStationary = true
+    }
+
+    /// Whether the Run is under 0.1 km or under 1 min of Moving time at `date`, so Stop asks before saving it.
+    public func isTooShort(at date: Date) -> Bool {
+        distance < Self.shortestDistance || movingTime(at: date) < Self.shortestMovingTime
     }
 
     /// Moving time over distance, or nil until 0.1 km.

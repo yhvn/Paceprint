@@ -1,9 +1,9 @@
 import SwiftData
 import SwiftUI
 
-/// History: every saved Run, newest first.
+/// History: every saved Run, newest first. A Run still being recorded isn't one.
 struct HistoryView: View {
-    @Query(sort: \Run.startDate, order: .reverse) private var runs: [Run]
+    @Query(filter: Run.finished, sort: \Run.startDate, order: .reverse) private var runs: [Run]
 
     var body: some View {
         List(runs) { run in

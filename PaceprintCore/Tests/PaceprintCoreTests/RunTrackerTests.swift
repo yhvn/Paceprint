@@ -366,4 +366,49 @@ struct RunTrackerTests {
 
         #expect(tracker.gpsStatus(at: start.addingTimeInterval(30)) == .finding)
     }
+
+    @Test("A Run under 0.1 km or under 1 min of Moving time is too short to keep", arguments: [
+        (steps: 8, seconds: 120.0, isTooShort: true),   // 89 m
+        (steps: 9, seconds: 120.0, isTooShort: false),  // 100.08 m
+        (steps: 20, seconds: 59.0, isTooShort: true),
+        (steps: 20, seconds: 60.0, isTooShort: false),
+    ])
+    func tooShort(steps: Int, seconds: Double, isTooShort: Bool) {
+        var tracker = RunTracker(runStart: start)
+        for step in 0...steps {
+            _ = tracker.add(fix(step: step, seconds: Double(step)))
+        }
+
+        #expect(tracker.isTooShort(at: start.addingTimeInterval(seconds)) == isTooShort)
+    }
+
+    @Test("Moving time spent in a Pause doesn't count toward the 1 min")
+    func tooShortAcrossPause() {
+        var tracker = RunTracker(runStart: start)
+        for step in 0...20 {
+            _ = tracker.add(fix(step: step, seconds: Double(step)))
+        }
+        tracker.pause(at: start.addingTimeInterval(30))
+
+        #expect(tracker.isTooShort(at: start.addingTimeInterval(300)))
+    }
+
+    @Test("A tracker rebuilt from its Route and Pauses carries on where it left off")
+    func restored() {
+        var original = RunTracker(runStart: start)
+        for step in 0...5 {
+            _ = original.add(fix(step: step, seconds: Double(step) * 4))
+        }
+        original.pause(at: start.addingTimeInterval(22))
+
+        var restored = RunTracker(runStart: start, points: original.points, pauses: original.pauses)
+        restored.resume(at: start.addingTimeInterval(40))
+        _ = restored.add(fix(step: 6, seconds: 44))
+        _ = restored.add(fix(step: 7, seconds: 48))
+
+        #expect(restored.points.count == 8)
+        // 5 steps before the Pause, none across it, 1 after.
+        #expect(abs(restored.distance - 6 * stepMetres) < 0.01)
+        #expect(restored.movingTime(at: start.addingTimeInterval(48)) == 30)
+    }
 }

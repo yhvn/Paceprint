@@ -63,6 +63,13 @@ struct ActiveRunView: View {
                 .padding(.bottom, 24)
             }
         }
+        .alert("Discard this run?", isPresented: Bindable(recorder).isAskingToDiscard) {
+            Button("Discard", role: .destructive) { recorder.discard() }
+            Button("Save") { recorder.save() }
+            Button("Keep Running", role: .cancel) {}
+        } message: {
+            Text("It's under 0.1 km or 1 minute.")
+        }
         .alert(Self.accessLostTitle, isPresented: $isShowingAccessLost) {
             Button("Open Settings") { openURL(.appSettings) }
             Button("Stop run", role: .destructive) { recorder.stop() }
