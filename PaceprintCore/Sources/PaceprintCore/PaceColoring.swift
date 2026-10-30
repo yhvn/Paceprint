@@ -9,6 +9,21 @@ public struct PaceColor: Hashable, Sendable {
         self.position = position
     }
 
+    /// A Pace this much faster or slower than average, in seconds per metre (30 s/km), gets the
+    /// palette's end color.
+    static let fullColorDifference = 0.03
+
+    /// Where `pace` sits compared with `average`: its end colors 30 s/km or more either side,
+    /// in between linearly. The middle without either.
+    public init(_ pace: Pace?, comparedWith average: Pace?) {
+        guard let pace, let average else {
+            self = .average
+            return
+        }
+        let difference = (pace.secondsPerMetre - average.secondsPerMetre) / Self.fullColorDifference
+        position = 0.5 + min(max(difference, -1), 1) / 2
+    }
+
     /// The Run's Average pace.
     public static let average = PaceColor(position: 0.5)
 }
@@ -21,9 +36,6 @@ public struct RoutePiece: Equatable, Sendable {
 
 /// Cuts a Route into what's drawn: the stretches between Pauses, and pieces in Pace colors.
 public enum PaceColoring {
-    /// A Pace this much faster or slower than average, in seconds per metre (30 s/km), gets the
-    /// palette's end color.
-    static let fullColorDifference = 0.03
     /// Each point's Pace is taken over this many metres around it.
     static let smoothingDistance = 100.0
     /// Pace colors are rounded to this many steps either side of the middle, so neighbouring
@@ -53,7 +65,7 @@ public enum PaceColoring {
     public static func pieces(of route: [RoutePoint], pauses: [Pause], averagePace: Pace?) -> [RoutePiece] {
         stretches(of: route, pauses: pauses).flatMap { stretch in
             let positions = stretch.indices.map { index in
-                position(of: smoothedPace(at: index, in: stretch), comparedWith: averagePace)
+                PaceColor(smoothedPace(at: index, in: stretch), comparedWith: averagePace).position
             }
             var pieces: [RoutePiece] = []
             var pieceStart = 0
@@ -99,12 +111,6 @@ public enum PaceColoring {
         let a = stretch[after - 1], b = stretch[after]
         let fraction = (distance - a.cumulativeDistance) / (b.cumulativeDistance - a.cumulativeDistance)
         return a.timestamp + fraction * b.timestamp.timeIntervalSince(a.timestamp)
-    }
-
-    private static func position(of pace: Pace?, comparedWith averagePace: Pace?) -> Double {
-        guard let pace, let averagePace else { return PaceColor.average.position }
-        let difference = (pace.secondsPerMetre - averagePace.secondsPerMetre) / fullColorDifference
-        return 0.5 + min(max(difference, -1), 1) / 2
     }
 
     private static func rounded(_ position: Double) -> Double {
