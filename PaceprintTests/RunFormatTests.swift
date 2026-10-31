@@ -1,0 +1,28 @@
+import Foundation
+import Testing
+@testable import Paceprint
+
+@Suite("Run format")
+struct RunFormatTests {
+    /// Noon on `day` `month` `year` in the device's calendar, clear of any time zone edge.
+    private func noon(_ year: Int, _ month: Int, _ day: Int) -> Date {
+        Calendar.current.date(from: DateComponents(year: year, month: month, day: day, hour: 12))!
+    }
+
+    @Test("A card's date leaves out the year for this year's Runs")
+    func cardDateThisYear() {
+        #expect(RunFormat.cardDate(noon(2026, 5, 12), now: noon(2026, 10, 31)) == "MAY 12")
+    }
+
+    @Test("A card's date shows the year for past years' Runs")
+    func cardDatePastYear() {
+        #expect(RunFormat.cardDate(noon(2025, 5, 12), now: noon(2026, 10, 31)) == "MAY 12, 2025")
+        #expect(RunFormat.cardDate(noon(2025, 12, 31), now: noon(2026, 1, 1)) == "DEC 31, 2025")
+    }
+
+    @Test("A History month header spells out the month, with its year")
+    func monthHeader() {
+        #expect(RunFormat.monthHeader(noon(2026, 5, 1)) == "MAY 2026")
+        #expect(RunFormat.monthHeader(noon(2026, 10, 1)) == "OCTOBER 2026")
+    }
+}

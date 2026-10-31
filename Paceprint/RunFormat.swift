@@ -48,3 +48,21 @@ extension DistanceUnit {
         }
     }
 }
+
+extension RunFormat {
+    /// Dates read in English, like the rest of the app's words, e.g. "MAY 12".
+    private static let english = Locale(identifier: "en_US")
+
+    /// A Run's date on a card, e.g. "MAY 12", with the year for past years: "MAY 12, 2025".
+    static func cardDate(_ date: Date, now: Date = .now, calendar: Calendar = .current) -> String {
+        let style: Date.FormatStyle = calendar.isDate(date, equalTo: now, toGranularity: .year)
+            ? .dateTime.month(.abbreviated).day()
+            : .dateTime.month(.abbreviated).day().year()
+        return date.formatted(style.locale(english)).uppercased()
+    }
+
+    /// A History month header, e.g. "MAY 2026".
+    static func monthHeader(_ month: Date) -> String {
+        month.formatted(.dateTime.month(.wide).year().locale(english)).uppercased()
+    }
+}
