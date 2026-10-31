@@ -74,3 +74,10 @@ final class Run {
         RunTracker(runStart: startDate, points: try decodedRoute(), pauses: pauses)
     }
 }
+
+extension RunTotals {
+    /// `runs` added up.
+    init(_ runs: [Run]) {
+        self.init(runs, distance: { $0.distance }, movingTime: { $0.movingTime })
+    }
+}

@@ -121,7 +121,7 @@ struct ContentView: View {
     /// Distance and Runs started this calendar week.
     private func thisWeek(now: Date) -> some View {
         let week = RunGrouping.startedThisWeek(runs, startedAt: \.startDate, now: now, calendar: .current)
-        let totals = RunTotals(week, distance: \.distance, movingTime: \.movingTime)
+        let totals = RunTotals(week)
         return HStack(alignment: .bottom) {
             VStack(alignment: .leading, spacing: 4) {
                 weekLabel("THIS WEEK")
@@ -168,34 +168,33 @@ struct ContentView: View {
     }
 }
 
-/// The most recent Run on Home: its date, title and numbers. No Route: Home never decodes one (ADR 0001).
+/// The most recent Run on Home: its date over where the Place name will go, then its numbers.
+/// No Route: Home never decodes one (ADR 0001).
 private struct LatestRunCard: View {
     let run: Run
 
     var body: some View {
-        HStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 0) {
-                Text("LAST RUN · \(RunFormat.cardDate(run.startDate))")
-                    .font(Theme.Typography.label)
-                    .tracking(Theme.Typography.labelTracking)
-                    .foregroundStyle(Theme.Colors.textSecondary)
-                Text(run.startDate, format: .dateTime.weekday(.wide))
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(Theme.Colors.textPrimary)
-                    .padding(.top, 4)
-                Spacer(minLength: 0)
-                HStack(alignment: .firstTextBaseline, spacing: 16) {
-                    Text("\(RunFormat.kilometres(run.distance)) KM")
-                    Text(RunFormat.time(run.movingTime))
-                    Text("\(RunFormat.pace(run.averagePace)) /KM")
-                }
-                .font(.system(size: 16, weight: .heavy).monospacedDigit())
+        VStack(alignment: .leading, spacing: 0) {
+            Text("LAST RUN · \(RunFormat.cardDate(run.startDate))")
+                .font(Theme.Typography.label)
+                .tracking(Theme.Typography.labelTracking)
+                .foregroundStyle(Theme.Colors.textSecondary)
+            Text(run.startDate, format: .dateTime.weekday(.wide))
+                .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(Theme.Colors.textPrimary)
+                .padding(.top, 4)
+            Spacer(minLength: 0)
+            HStack(alignment: .firstTextBaseline, spacing: 16) {
+                Text("\(RunFormat.kilometres(run.distance)) KM")
+                Text(RunFormat.time(run.movingTime))
+                Text("\(RunFormat.pace(run.averagePace)) /KM")
             }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 14)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .font(.system(size: 16, weight: .heavy).monospacedDigit())
+            .foregroundStyle(Theme.Colors.textPrimary)
         }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: 96)
         .background(LinearGradient(colors: [Theme.Colors.sheetMid, Theme.Colors.sheetDark], startPoint: .topLeading, endPoint: .bottomTrailing))
         .clipShape(RoundedRectangle(cornerRadius: 16))

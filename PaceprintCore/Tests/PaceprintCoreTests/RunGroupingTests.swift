@@ -48,6 +48,17 @@ struct RunGroupingTests {
         #expect(RunGrouping.startedThisWeek(runs, startedAt: \.start, now: now, calendar: calendar(firstWeekday: 2)).isEmpty)
     }
 
+    @Test("THIS WEEK starts at the first weekday's midnight and stops just before the next")
+    func weekBoundaries() {
+        // Monday-first: this week runs from Monday 26th 00:00 up to, not including, Monday 2 November 00:00.
+        let nextMonday = calendar(firstWeekday: 2).date(from: DateComponents(year: 2026, month: 11, day: 2))!
+        let runs = [october(26, 0), nextMonday - 1, nextMonday].map { FakeRun(start: $0) }
+
+        let thisWeek = RunGrouping.startedThisWeek(runs, startedAt: \.start, now: now, calendar: calendar(firstWeekday: 2))
+
+        #expect(thisWeek.map(\.start) == [october(26, 0), nextMonday - 1])
+    }
+
     @Test("History groups Runs by the month they started, newest month and newest Run first")
     func byMonth() {
         let cal = calendar(firstWeekday: 2)

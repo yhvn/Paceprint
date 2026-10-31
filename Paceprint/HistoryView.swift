@@ -70,7 +70,7 @@ struct HistoryView: View {
 
     /// All-time TOTAL, RUNS and AVG PACE.
     private var totals: some View {
-        let totals = RunTotals(runs, distance: \.distance, movingTime: \.movingTime)
+        let totals = RunTotals(runs)
         return HStack(spacing: 12) {
             TotalTile(label: "TOTAL", value: RunFormat.kilometres(totals.distance), unit: "KM")
             TotalTile(label: "RUNS", value: "\(totals.runCount)", unit: nil)
@@ -102,13 +102,13 @@ private struct TotalTile: View {
                 .foregroundStyle(Theme.Colors.textTertiary)
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(value)
-                    .font(.system(size: 22, weight: .heavy).monospacedDigit())
+                    .font(Theme.Typography.metric(.sm))
                     .foregroundStyle(Theme.Colors.textPrimary)
                     .minimumScaleFactor(0.6)
                     .lineLimit(1)
                 if let unit {
                     Text(unit)
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(Theme.Typography.label)
                         .foregroundStyle(Theme.Colors.textTertiary)
                 }
             }
@@ -122,31 +122,31 @@ private struct TotalTile: View {
     }
 }
 
-/// One Run in History: its date, title and numbers. No Route: History never decodes one (ADR 0001).
+/// One Run in History: its date over where the Place name will go, then its numbers.
+/// No Route: History never decodes one (ADR 0001).
 private struct HistoryCard: View {
     let run: Run
 
     var body: some View {
-        ZStack(alignment: .leading) {
-            VStack(alignment: .leading, spacing: 0) {
-                Text(RunFormat.cardDate(run.startDate))
-                    .font(Theme.Typography.label)
-                    .tracking(Theme.Typography.labelTracking)
-                    .foregroundStyle(Theme.Colors.textSecondary)
-                Text(run.startDate, format: .dateTime.weekday(.wide))
-                    .font(.system(size: 22, weight: .heavy))
-                    .foregroundStyle(Theme.Colors.textPrimary)
-                    .padding(.top, 4)
-                Spacer(minLength: 12)
-                HStack(alignment: .firstTextBaseline, spacing: 18) {
-                    CardMetric(label: "KM", value: RunFormat.kilometres(run.distance))
-                    CardMetric(label: "TIME", value: RunFormat.time(run.movingTime))
-                    CardMetric(label: "PACE", value: RunFormat.pace(run.averagePace))
-                }
+        VStack(alignment: .leading, spacing: 0) {
+            Text(RunFormat.cardDate(run.startDate))
+                .font(Theme.Typography.label)
+                .tracking(Theme.Typography.labelTracking)
+                .foregroundStyle(Theme.Colors.textSecondary)
+            Text(run.startDate, format: .dateTime.weekday(.wide))
+                .font(.system(size: 22, weight: .heavy))
+                .foregroundStyle(Theme.Colors.textPrimary)
+                .padding(.top, 4)
+            Spacer(minLength: 12)
+            HStack(alignment: .firstTextBaseline, spacing: 18) {
+                CardMetric(label: "KM", value: RunFormat.kilometres(run.distance))
+                CardMetric(label: "TIME", value: RunFormat.time(run.movingTime))
+                CardMetric(label: "PACE", value: RunFormat.pace(run.averagePace))
             }
-            .padding(.vertical, 14)
-            .padding(.horizontal, 16)
         }
+        .padding(.vertical, 14)
+        .padding(.horizontal, 16)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: 132)
         .background(Theme.Colors.sheetDark, in: RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.08), lineWidth: 0.5))
