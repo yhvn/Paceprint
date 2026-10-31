@@ -31,9 +31,7 @@ enum Theme {
         static let inkBlack = Color(hex: 0x08090C)
         static let mapNight = Color(hex: 0x0A0E14)
         static let mapIndigo = Color(hex: 0x11151C)
-        static let photoTop = Color.black.opacity(0.55)
-        static let photoMid = Color.black.opacity(0.10)
-        static let photoBottom = Color(hex: 0x080A10, opacity: 0.96)
+        // The gradients over photos are `ScrimGradient`'s, darkened per Run.
 
         // Text
         static let textPrimary = Color.white

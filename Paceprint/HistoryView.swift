@@ -78,11 +78,10 @@ struct HistoryView: View {
         }
     }
 
-    /// Deletes `run` for good; every total follows at once, as they're read from the store.
+    /// Deletes `run` for good, with its photo; every total follows at once, as they're read from the store.
     private func delete(_ run: Run) {
-        modelContext.delete(run)
         do {
-            try modelContext.save()
+            try modelContext.deleteRun(run)
         } catch {
             logger.error("Couldn't delete the Run: \(error)")
         }
@@ -122,7 +121,7 @@ private struct TotalTile: View {
     }
 }
 
-/// One Run in History: its date over where the Place name will go, then its numbers.
+/// One Run in History over its photo: its date over where the Place name will go, then its numbers.
 /// No Route: History never decodes one (ADR 0001).
 private struct HistoryCard: View {
     let run: Run
@@ -148,10 +147,23 @@ private struct HistoryCard: View {
         .padding(.horizontal, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: 132)
-        .background(Theme.Colors.sheetDark, in: RoundedRectangle(cornerRadius: 16))
+        .background { photo }
+        .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.08), lineWidth: 0.5))
         .contentShape(RoundedRectangle(cornerRadius: 16))
         .accessibilityElement(children: .combine)
+    }
+
+    /// The Run's photo, else the plain card.
+    private var photo: some View {
+        ZStack {
+            Theme.Colors.sheetDark
+            if let fileName = run.photoFileName {
+                // A card is ~360 × 132 pt; this covers its width at 3× for most photos.
+                RunPhoto(fileName: fileName, filter: run.photoFilter, maxPixelSize: 1200) { Color.clear }
+                ScrimGradient(stops: .historyCard, startPoint: .leading, endPoint: .trailing, scrim: run.scrim)
+            }
+        }
     }
 }
 
