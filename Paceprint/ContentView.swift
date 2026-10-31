@@ -168,15 +168,12 @@ struct ContentView: View {
     }
 }
 
-/// The most recent Run on Home: its Route, date, title and numbers.
+/// The most recent Run on Home: its date, title and numbers. No Route: Home never decodes one (ADR 0001).
 private struct LatestRunCard: View {
     let run: Run
 
     var body: some View {
         HStack(spacing: 0) {
-            RouteThumbnail(run: run, lineWidth: 2)
-                .frame(width: 96)
-                .background(Theme.Colors.mapIndigo)
             VStack(alignment: .leading, spacing: 0) {
                 Text("LAST RUN · \(RunFormat.cardDate(run.startDate))")
                     .font(Theme.Typography.label)

@@ -122,15 +122,12 @@ private struct TotalTile: View {
     }
 }
 
-/// One Run in History: its date, title and numbers, with its Route on the right.
+/// One Run in History: its date, title and numbers. No Route: History never decodes one (ADR 0001).
 private struct HistoryCard: View {
     let run: Run
 
     var body: some View {
         ZStack(alignment: .leading) {
-            RouteThumbnail(run: run, lineWidth: 2.5)
-                .frame(width: 130)
-                .frame(maxWidth: .infinity, alignment: .trailing)
             VStack(alignment: .leading, spacing: 0) {
                 Text(RunFormat.cardDate(run.startDate))
                     .font(Theme.Typography.label)
