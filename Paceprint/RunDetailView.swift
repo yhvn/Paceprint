@@ -46,21 +46,27 @@ struct RunDetailView: View {
         }
     }
 
+    /// The Run's photo with its Route drawn over it, else the dark map with its Route.
     private var routeStrip: some View {
-        RouteMap(run: run)
-            .allowsHitTesting(false)
-            .frame(height: 360)
-            .overlay {
-                LinearGradient(
-                    stops: [
-                        .init(color: Theme.Colors.photoTop, location: 0),
-                        .init(color: Theme.Colors.photoMid, location: 0.4),
-                        .init(color: Theme.Colors.inkBlack, location: 1),
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
+        Group {
+            if let fileName = run.photoFileName {
+                RunPhoto(fileName: fileName, filter: run.photoFilter) { Theme.Colors.inkBlack }
+            } else {
+                RouteMap(run: run)
             }
+        }
+        .allowsHitTesting(false)
+        .frame(height: 360)
+        .overlay { ScrimGradient(stops: .detailStrip, scrim: run.scrim) }
+        .overlay {
+            if run.photoFileName != nil {
+                // Clear of the top bar and the headline below.
+                RouteOverlay(run: run)
+                    .padding(.top, 120)
+                    .padding(.bottom, 140)
+                    .padding(.horizontal, 64)
+            }
+        }
     }
 
     private var topBar: some View {

@@ -52,6 +52,10 @@ _Avoid_: Heat, intensity
 The 9:16 image of one Run, made to be shared: its photo or dark map, its Route in Pace colors, and its headline numbers.
 _Avoid_: Share image, export, poster
 
+**Scrim**:
+The darkening drawn over a Run's photo so the text on it stays readable; its strength is measured once, from the photo, when it's picked.
+_Avoid_: Overlay, shade, dimming
+
 **Place name**:
 The headline naming where a Run happened: a park or other landmark area, else a neighbourhood, else a city.
 _Avoid_: City, title, location

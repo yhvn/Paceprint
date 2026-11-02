@@ -21,6 +21,12 @@ final class Run {
     /// False while the Run is still being recorded: it's only a checkpoint, kept in case the app is
     /// killed, and never shown in History or totals.
     var isFinished = true
+    /// The photo picked on Summary: a file in `RunPhotoStore`'s folder. Nil shows the dark map.
+    var photoFileName: String?
+    /// `photoFilter`'s raw value. Stored as a String: SwiftData can't store an enum with a case named `none`.
+    private var photoFilterName = PhotoFilter.none.rawValue
+    /// How much darker the photo is drawn so text over it reads; measured when it was picked.
+    var photoScrimStrength = 0.0
 
     /// Runs that were stopped and saved: everything History and totals show.
     static var finished: Predicate<Run> {
@@ -58,6 +64,17 @@ final class Run {
         checkpoint(tracker, at: date)
         pauses = tracker.pauses.map { Pause(start: $0.start, end: $0.end ?? date) }
         isFinished = true
+    }
+
+    /// The look the photo is drawn with.
+    var photoFilter: PhotoFilter {
+        get { PhotoFilter(rawValue: photoFilterName) ?? .none }
+        set { photoFilterName = newValue.rawValue }
+    }
+
+    /// How much darker this Run's photo is drawn, on every screen it appears on.
+    var scrim: Scrim {
+        Scrim(strength: photoScrimStrength)
     }
 
     /// Moving time over distance, or nil under 0.1 km.

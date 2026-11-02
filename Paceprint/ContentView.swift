@@ -19,8 +19,7 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Until Runs have photos, a plain dark background.
-                LinearGradient(colors: [Theme.Colors.sheetMid, Theme.Colors.inkBlack], startPoint: .top, endPoint: .bottom)
+                background
                     .ignoresSafeArea()
 
                 VStack(spacing: 0) {
@@ -73,6 +72,25 @@ struct ContentView: View {
             }
         }
         .preferredColorScheme(.dark)
+    }
+
+    /// The latest Run's photo, else the bundled one, under the design's Home gradient.
+    @ViewBuilder
+    private var background: some View {
+        if let run = runs.first, let fileName = run.photoFileName {
+            RunPhoto(fileName: fileName, filter: run.photoFilter) { Theme.Colors.inkBlack }
+                .overlay { ScrimGradient(stops: .home, scrim: run.scrim) }
+        } else {
+            Color.clear
+                .overlay {
+                    Image(.defaultHomePhoto)
+                        .resizable()
+                        .scaledToFill()
+                }
+                .clipped()
+                .accessibilityHidden(true)
+                .overlay { ScrimGradient(stops: .home, scrim: .bundledPhoto) }
+        }
     }
 
     private var topBar: some View {
