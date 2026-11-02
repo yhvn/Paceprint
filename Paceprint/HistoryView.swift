@@ -128,12 +128,16 @@ private struct HistoryCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(RunFormat.cardDate(run.startDate))
+            // e.g. "MAY 12 · DUMBO": the date, then the first name of the Place context, if any.
+            Text(([RunFormat.cardDate(run.startDate)] + run.placeContext.prefix(1).map { $0.uppercased() }).joined(separator: " · "))
                 .font(Theme.Typography.label)
                 .tracking(Theme.Typography.labelTracking)
                 .foregroundStyle(Theme.Colors.textSecondary)
-            Text(run.startDate, format: .dateTime.weekday(.wide))
+                .lineLimit(1)
+            Text(run.title)
                 .font(.system(size: 22, weight: .heavy))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
                 .foregroundStyle(Theme.Colors.textPrimary)
                 .padding(.top, 4)
             Spacer(minLength: 12)

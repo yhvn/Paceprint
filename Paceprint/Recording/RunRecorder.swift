@@ -41,10 +41,13 @@ final class RunRecorder {
 
     @ObservationIgnored private let source: any LocationSource
     @ObservationIgnored private let modelContext: ModelContext
+    @ObservationIgnored private let placeNamer: RunPlaceNamer?
+    @ObservationIgnored private var naming: Task<Void, Never>?
     @ObservationIgnored private let now: () -> Date
     @ObservationIgnored private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Paceprint", category: "RunRecorder")
 
-    init(source: any LocationSource, modelContext: ModelContext, now: @escaping () -> Date = { .now }) {
+    init(source: any LocationSource, modelContext: ModelContext, placeNamer: RunPlaceNamer? = nil, now: @escaping () -> Date = { .now }) {
+        self.placeNamer = placeNamer
         self.source = source
         self.modelContext = modelContext
         self.now = now
@@ -179,6 +182,9 @@ final class RunRecorder {
         run?.finish(tracker, at: now())
         persist()
         stoppedRun = run
+        if let run, let placeNamer {
+            naming = Task { await placeNamer.name(run) }
+        }
         end()
     }
 
@@ -208,6 +214,11 @@ final class RunRecorder {
         tracker = nil
         isAccessLost = false
         isAskingToDiscard = false
+    }
+
+    /// Waits until the Run just stopped has had its place looked up.
+    func waitUntilPlaceIsNamed() async {
+        await naming?.value
     }
 
     /// Waits until the location source runs out of fixes. Only a replayed source ever does.
