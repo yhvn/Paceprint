@@ -1,15 +1,25 @@
 import SwiftUI
 
-/// Where the Place name will go: for now the Run's weekday, over its date and time.
+/// Where a Run happened: its Place context above its Place name, over its date and time.
+/// Until the place is found, the name is the time of day, e.g. MORNING RUN, with no context.
 struct RunHeadline: View {
     let run: Run
     let font: Font
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(run.startDate, format: .dateTime.weekday(.wide))
+            if !run.placeContext.isEmpty {
+                Text(run.placeContextShown)
+                    .font(Theme.Typography.label)
+                    .tracking(Theme.Typography.labelTracking)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .lineLimit(1)
+            }
+            Text(run.placeNameShown)
                 .font(font)
                 .foregroundStyle(Theme.Colors.textPrimary)
+                .lineLimit(2)
+                .minimumScaleFactor(0.6)
                 .shadow(color: .black.opacity(0.4), radius: 6, y: 2)
             Text(run.startDate.formatted(.dateTime.day().month(.abbreviated).year().hour().minute()).uppercased())
                 .font(Theme.Typography.label)

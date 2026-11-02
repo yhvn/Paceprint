@@ -27,6 +27,28 @@ final class Run {
     private var photoFilterName = PhotoFilter.none.rawValue
     /// How much darker the photo is drawn so text over it reads; measured when it was picked.
     var photoScrimStrength = 0.0
+    /// Where the Run happened, as found by looking it up after Stop; nil until found, or if nothing was.
+    var placeName: String?
+    /// Up to two wider names around the Place name, e.g. ["Brooklyn", "New York"].
+    var placeContext: [String] = []
+    /// The lookup has run and answered, whether or not it found a place. False until then, including
+    /// after a failed lookup, so it's tried again on a later launch.
+    var isPlaceLookedUp = false
+
+    /// The Place name in capitals, or until it's found the time-of-day name, e.g. MORNING RUN.
+    var placeNameShown: String {
+        placeName?.uppercased() ?? PlaceNaming.timeOfDayName(startingAt: startDate, calendar: .current)
+    }
+
+    /// The Place context in capitals, joined: e.g. "MANHATTAN · NEW YORK"; empty until found.
+    var placeContextShown: String {
+        placeContext.joined(separator: " · ").uppercased()
+    }
+
+    /// Finished Runs whose place hasn't been looked up yet.
+    static var awaitingPlace: Predicate<Run> {
+        #Predicate { $0.isFinished && !$0.isPlaceLookedUp }
+    }
 
     /// Runs that were stopped and saved: everything History and totals show.
     static var finished: Predicate<Run> {

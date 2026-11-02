@@ -26,6 +26,7 @@ struct PaceprintApp: App {
 final class AppDelegate: NSObject, UIApplicationDelegate {
     let container: ModelContainer
     let recorder: RunRecorder
+    private let placeNamer: RunPlaceNamer
 
     override init() {
         do {
@@ -33,12 +34,15 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         } catch {
             fatalError("Couldn't open the Run store: \(error)")
         }
-        recorder = RunRecorder(source: LiveLocationSource(), modelContext: container.mainContext)
+        placeNamer = RunPlaceNamer(lookup: GeocoderPlaceLookup(), modelContext: container.mainContext)
+        recorder = RunRecorder(source: LiveLocationSource(), modelContext: container.mainContext, placeNamer: placeNamer)
     }
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         // iOS relaunches the app with this key when it was killed while recording location in the background.
         recorder.recoverUnfinishedRun(relaunchedInBackground: launchOptions?[.location] != nil)
+        // Places that couldn't be looked up before, e.g. offline after Stop, are tried again quietly.
+        Task { [placeNamer] in await placeNamer.nameRunsAwaitingPlace() }
         return true
     }
 }
