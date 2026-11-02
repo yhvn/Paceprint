@@ -2,10 +2,23 @@ import PaceprintCore
 import SwiftUI
 
 /// NONE · CHROMA · NOIR · DUSK · FILM along the bottom of Summary; the chosen one is a white pill.
+/// Where the five don't fit across at their full label size, the strip scrolls rather than shrink
+/// the labels below 11 pt.
 struct FilterStrip: View {
     @Binding var selection: PhotoFilter
 
     var body: some View {
+        ViewThatFits(in: .horizontal) {
+            pills
+            ScrollView(.horizontal) {
+                pills
+                    .padding(.horizontal, 8)
+            }
+            .scrollIndicators(.hidden)
+        }
+    }
+
+    private var pills: some View {
         HStack(spacing: 8) {
             ForEach(PhotoFilter.allCases, id: \.self) { filter in
                 pill(filter)
@@ -26,12 +39,12 @@ struct FilterStrip: View {
                     .font(Theme.Typography.label)
                     .tracking(Theme.Typography.labelTracking * 0.9)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .fixedSize()
                     .foregroundStyle(isSelected ? Theme.Colors.textOnLight : Color.white.opacity(0.85))
             }
             .padding(.top, 8)
             .padding(.bottom, 6)
-            .padding(.horizontal, 4)
+            .padding(.horizontal, 10)
             .frame(maxWidth: .infinity)
             .background(isSelected ? Color.white.opacity(0.95) : Theme.Colors.glass, in: RoundedRectangle(cornerRadius: 12))
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(isSelected ? Color.white.opacity(0.95) : Color.white.opacity(0.15), lineWidth: 0.5))

@@ -49,6 +49,19 @@ struct RunPhotoStoreTests {
         #expect(size.height == 1536)
     }
 
+    @Test("A photo handed over as a file is copied in the same way, without reading it whole")
+    func fromFile() async throws {
+        let file = URL.temporaryDirectory.appending(path: "picked-\(UUID().uuidString).jpg")
+        try photo(width: 4000, height: 3000, gray: 1).write(to: file)
+        defer { try? FileManager.default.removeItem(at: file) }
+
+        let saved = try await store.save(contentsOf: file)
+
+        let size = try pixelSize(of: saved.fileName)
+        #expect(size.width == 2048)
+        #expect(saved.scrim.strength == 1)
+    }
+
     @Test("A photo already smaller than 2,048 px keeps its size")
     func smallPhoto() async throws {
         let saved = try await store.save(try photo(width: 800, height: 600, gray: 0.5))

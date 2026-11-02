@@ -36,9 +36,19 @@ nonisolated struct RunPhotoStore: Sendable {
     /// Downscales `data` (any image the photo picker hands over, upright), writes it as a new file,
     /// and measures its Scrim.
     @concurrent func save(_ data: Data) async throws -> Saved {
-        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
-              let image = Self.downscaled(source, maxPixelSize: Self.longestSide)
-        else { throw Problem.unreadable }
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { throw Problem.unreadable }
+        return try save(source)
+    }
+
+    /// As `save(_:)`, reading the image from `file`: only the downscaled copy is ever decoded, so a
+    /// 48 MP original never sits in memory whole.
+    @concurrent func save(contentsOf file: URL) async throws -> Saved {
+        guard let source = CGImageSourceCreateWithURL(file as CFURL, nil) else { throw Problem.unreadable }
+        return try save(source)
+    }
+
+    private func save(_ source: CGImageSource) throws -> Saved {
+        guard let image = Self.downscaled(source, maxPixelSize: Self.longestSide) else { throw Problem.unreadable }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let fileName = try write(image)
         return Saved(fileName: fileName, scrim: Self.scrim(of: image))
@@ -109,13 +119,21 @@ nonisolated struct RunPhotoStore: Sendable {
 }
 
 extension ModelContext {
-    /// Makes `photo` the Run's photo, saved at once; the photo it replaces is deleted.
+    /// Makes `photo` the Run's photo, saved at once; the photo it replaces is deleted. If the save
+    /// fails, the Run keeps its old photo and the new file is deleted.
     func setPhoto(_ photo: RunPhotoStore.Saved, of run: Run, in store: RunPhotoStore = .shared) throws {
-        let replaced = run.photoFileName
+        let replaced = (fileName: run.photoFileName, scrimStrength: run.photoScrimStrength)
         run.photoFileName = photo.fileName
         run.photoScrimStrength = photo.scrim.strength
-        try save()
-        if let replaced { store.delete(replaced) }
+        do {
+            try save()
+        } catch {
+            run.photoFileName = replaced.fileName
+            run.photoScrimStrength = replaced.scrimStrength
+            store.delete(photo.fileName)
+            throw error
+        }
+        if let old = replaced.fileName { store.delete(old) }
     }
 
     /// Deletes `run` for good, with its photo.

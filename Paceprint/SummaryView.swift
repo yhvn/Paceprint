@@ -112,8 +112,9 @@ struct SummaryView: View {
             pickedPhoto = nil
         }
         do {
-            guard let data = try await item.loadTransferable(type: Data.self) else { throw RunPhotoStore.Problem.unreadable }
-            let photo = try await RunPhotoStore.shared.save(data)
+            guard let picked = try await item.loadTransferable(type: PickedPhotoFile.self) else { throw RunPhotoStore.Problem.unreadable }
+            defer { try? FileManager.default.removeItem(at: picked.url) }
+            let photo = try await RunPhotoStore.shared.save(contentsOf: picked.url)
             try modelContext.setPhoto(photo, of: run)
         } catch {
             logger.error("Couldn't use the picked photo: \(error)")
@@ -127,6 +128,21 @@ struct SummaryView: View {
             try modelContext.save()
         } catch {
             logger.error("Couldn't save the filter: \(error)")
+        }
+    }
+}
+
+/// A picked photo handed over as a file in the temporary directory, so a large original is never
+/// read into memory whole. The caller deletes the file once it's copied in.
+nonisolated private struct PickedPhotoFile: Transferable {
+    let url: URL
+
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(importedContentType: .image) { received in
+            // The picker's file only lasts for this call.
+            let copy = URL.temporaryDirectory.appending(path: "\(UUID().uuidString).\(received.file.pathExtension)")
+            try FileManager.default.copyItem(at: received.file, to: copy)
+            return PickedPhotoFile(url: copy)
         }
     }
 }

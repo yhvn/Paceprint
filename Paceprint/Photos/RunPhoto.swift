@@ -53,9 +53,12 @@ final class RunPhotoCache {
     private let store: RunPhotoStore
     private let images = NSCache<NSString, CGImage>()
 
+    /// About eight full-size 2,048 px photos; History's small cards take far less each.
+    static let memoryLimit = 128 * 1024 * 1024
+
     init(store: RunPhotoStore = .shared) {
         self.store = store
-        images.countLimit = 40
+        images.totalCostLimit = Self.memoryLimit
     }
 
     func cached(_ key: Key) -> CGImage? {
@@ -65,7 +68,7 @@ final class RunPhotoCache {
     func image(for key: Key) async -> CGImage? {
         if let image = cached(key) { return image }
         guard let image = await store.image(key.fileName, filter: key.filter, maxPixelSize: key.maxPixelSize) else { return nil }
-        images.setObject(image, forKey: key.name)
+        images.setObject(image, forKey: key.name, cost: image.bytesPerRow * image.height)
         return image
     }
 }
