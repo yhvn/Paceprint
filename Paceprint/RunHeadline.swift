@@ -9,13 +9,13 @@ struct RunHeadline: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if !run.placeContext.isEmpty {
-                Text(run.placeContext.joined(separator: " · ").uppercased())
+                Text(run.placeContextShown)
                     .font(Theme.Typography.label)
                     .tracking(Theme.Typography.labelTracking)
                     .foregroundStyle(Theme.Colors.textSecondary)
                     .lineLimit(1)
             }
-            Text(run.title)
+            Text(run.placeNameShown)
                 .font(font)
                 .foregroundStyle(Theme.Colors.textPrimary)
                 .lineLimit(2)

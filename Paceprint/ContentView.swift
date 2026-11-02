@@ -197,7 +197,7 @@ private struct LatestRunCard: View {
                 .font(Theme.Typography.label)
                 .tracking(Theme.Typography.labelTracking)
                 .foregroundStyle(Theme.Colors.textSecondary)
-            Text(run.title)
+            Text(run.placeNameShown)
                 .font(.system(size: 17, weight: .bold))
                 .lineLimit(1)
                 .foregroundStyle(Theme.Colors.textPrimary)

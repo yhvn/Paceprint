@@ -35,7 +35,7 @@ public struct Place: Equatable, Sendable {
 /// How a Run's Place name and Place context are chosen from lookups along its Route.
 public enum PlaceNaming {
     /// How many of the looked-up points must share an area of interest for it to name the Run.
-    static let sharedAreaOfInterest = 3
+    static let pointsSharingArea = 3
 
     /// The points to look up: the start, 25%, 50% and 75% of the distance, and the end; fewer when
     /// the Route is too short for them to differ. Points taken during a Pause are left out.
@@ -63,7 +63,8 @@ public enum PlaceNaming {
                 return Place(name: neighbourhood, context: context(after: neighbourhood, in: [placemark.city, placemark.region, placemark.country]))
             }
             if let city = placemark.city {
-                return Place(name: city, context: context(after: city, in: [placemark.region, placemark.country]))
+                // Just the one wider name: the region, else the country.
+                return Place(name: city, context: Array(context(after: city, in: [placemark.region, placemark.country]).prefix(1)))
             }
         }
         return nil
@@ -89,7 +90,7 @@ public enum PlaceNaming {
             }
         }
         // Most shared first; ties go to the one met first along the Route.
-        guard let most = counts.values.max(), most >= sharedAreaOfInterest,
+        guard let most = counts.values.max(), most >= pointsSharingArea,
               let area = placemarks.flatMap(\.areasOfInterest).first(where: { counts[$0] == most }),
               let placemark = placemarks.first(where: { $0.areasOfInterest.contains(area) })
         else { return nil }

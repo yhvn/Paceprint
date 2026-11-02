@@ -36,8 +36,13 @@ final class Run {
     var isPlaceLookedUp = false
 
     /// The Place name in capitals, or until it's found the time-of-day name, e.g. MORNING RUN.
-    var title: String {
+    var placeNameShown: String {
         placeName?.uppercased() ?? PlaceNaming.timeOfDayName(startingAt: startDate, calendar: .current)
+    }
+
+    /// The Place context in capitals, joined: e.g. "MANHATTAN · NEW YORK"; empty until found.
+    var placeContextShown: String {
+        placeContext.joined(separator: " · ").uppercased()
     }
 
     /// Finished Runs whose place hasn't been looked up yet.

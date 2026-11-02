@@ -42,7 +42,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         // iOS relaunches the app with this key when it was killed while recording location in the background.
         recorder.recoverUnfinishedRun(relaunchedInBackground: launchOptions?[.location] != nil)
         // Places that couldn't be looked up before, e.g. offline after Stop, are tried again quietly.
-        Task { [placeNamer] in await placeNamer.nameUnnamedRuns() }
+        Task { [placeNamer] in await placeNamer.nameRunsAwaitingPlace() }
         return true
     }
 }

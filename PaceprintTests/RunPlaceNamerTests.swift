@@ -26,7 +26,7 @@ struct RunPlaceNamerTests {
     }
 
     private func namer(_ lookup: FakePlaceLookup) -> RunPlaceNamer {
-        RunPlaceNamer(lookup: lookup, modelContext: container.mainContext)
+        RunPlaceNamer(lookup: lookup, modelContext: container.mainContext, requestSpacing: .zero)
     }
 
     private static let park = Placemark(areasOfInterest: ["Central Park"], neighbourhood: "Manhattan", city: "New York", region: "NY", country: "United States")
@@ -39,7 +39,7 @@ struct RunPlaceNamerTests {
         await namer(lookup).name(run)
 
         #expect(lookup.lookups == 5)
-        #expect(run.title == "CENTRAL PARK")
+        #expect(run.placeNameShown == "CENTRAL PARK")
         #expect(run.placeContext == ["Manhattan", "New York"])
         #expect(run.isPlaceLookedUp)
     }
@@ -48,7 +48,7 @@ struct RunPlaceNamerTests {
     func timeOfDayUntilNamed() {
         let run = savedRun()
 
-        #expect(run.title == "MORNING RUN")
+        #expect(run.placeNameShown == "MORNING RUN")
         #expect(run.placeContext.isEmpty)
     }
 
@@ -57,11 +57,11 @@ struct RunPlaceNamerTests {
         let run = savedRun()
 
         await namer(FakePlaceLookup(answer: .fails)).name(run)
-        #expect(run.title == "MORNING RUN")
+        #expect(run.placeNameShown == "MORNING RUN")
         #expect(!run.isPlaceLookedUp)
 
-        await namer(FakePlaceLookup(answer: .found(Self.park))).nameUnnamedRuns()
-        #expect(run.title == "CENTRAL PARK")
+        await namer(FakePlaceLookup(answer: .found(Self.park))).nameRunsAwaitingPlace()
+        #expect(run.placeNameShown == "CENTRAL PARK")
     }
 
     @Test("A lookup that works but finds no place keeps the time-of-day name for good")
@@ -70,11 +70,49 @@ struct RunPlaceNamerTests {
 
         await namer(FakePlaceLookup(answer: .nothing)).name(run)
         let later = FakePlaceLookup(answer: .found(Self.park))
-        await namer(later).nameUnnamedRuns()
+        await namer(later).nameRunsAwaitingPlace()
 
-        #expect(run.title == "MORNING RUN")
+        #expect(run.placeNameShown == "MORNING RUN")
         #expect(run.isPlaceLookedUp)
         #expect(later.lookups == 0)
+    }
+
+    @Test("At launch, Runs waiting for their place stop at the first failed lookup, so the rest wait for a later launch")
+    func retryStopsAtFailure() async {
+        _ = savedRun()
+        _ = savedRun()
+        let lookup = FakePlaceLookup(answer: .fails)
+
+        await namer(lookup).nameRunsAwaitingPlace()
+
+        #expect(lookup.lookups == 1)
+    }
+
+    @Test("A Route that can't be read keeps its time-of-day name, rather than being looked up on every launch")
+    func unreadableRoute() async {
+        let run = savedRun()
+        run.routeData = Data([99])
+        let lookup = FakePlaceLookup(answer: .found(Self.park))
+
+        await namer(lookup).name(run)
+
+        #expect(run.isPlaceLookedUp)
+        #expect(run.placeNameShown == "MORNING RUN")
+        #expect(lookup.lookups == 0)
+    }
+
+    @Test("A Run deleted while its place is looked up isn't written to")
+    func deletedDuringLookup() async throws {
+        let run = savedRun()
+        try container.mainContext.save()
+        let lookup = FakePlaceLookup(answer: .found(Self.park)) { [container] in
+            container.mainContext.delete(run)
+            try? container.mainContext.save()
+        }
+
+        await namer(lookup).name(run)
+
+        #expect(try container.mainContext.fetch(FetchDescriptor<Run>()).isEmpty)
     }
 
     @Test("Stopping a Run names it")
@@ -91,7 +129,7 @@ struct RunPlaceNamerTests {
         recorder.stop()
         await recorder.waitUntilPlaceIsNamed()
 
-        #expect(recorder.stoppedRun?.title == "CENTRAL PARK")
+        #expect(recorder.stoppedRun?.placeNameShown == "CENTRAL PARK")
     }
 }
 
@@ -106,14 +144,19 @@ final class FakePlaceLookup: PlaceLookup {
     struct Offline: Error {}
 
     let answer: Answer
+    /// Runs during the first lookup, as if something happened while it was out.
+    private var duringFirstLookup: (() -> Void)?
     private(set) var lookups = 0
 
-    init(answer: Answer) {
+    init(answer: Answer, duringFirstLookup: (() -> Void)? = nil) {
         self.answer = answer
+        self.duringFirstLookup = duringFirstLookup
     }
 
     func placemark(latitude: Double, longitude: Double) async throws -> Placemark? {
         lookups += 1
+        duringFirstLookup?()
+        duringFirstLookup = nil
         switch answer {
         case .found(let placemark): return placemark
         case .nothing: return nil

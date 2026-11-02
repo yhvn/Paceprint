@@ -134,7 +134,7 @@ private struct HistoryCard: View {
                 .tracking(Theme.Typography.labelTracking)
                 .foregroundStyle(Theme.Colors.textSecondary)
                 .lineLimit(1)
-            Text(run.title)
+            Text(run.placeNameShown)
                 .font(.system(size: 22, weight: .heavy))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)

@@ -66,11 +66,13 @@ struct PlaceNamingTests {
         #expect(place == Place(name: "Williamsburg", context: ["New York", "NY"]))
     }
 
-    @Test("With no neighbourhood at the start, the city is the Place name and its context its region and country")
+    @Test("With no neighbourhood at the start, the city is the Place name, and its context its region or else its country")
     func city() {
-        let placemarks = [Placemark(areasOfInterest: [], neighbourhood: nil, city: "Hanoi", region: nil, country: "Vietnam")]
+        let hanoi = Placemark(areasOfInterest: [], neighbourhood: nil, city: "Hanoi", region: nil, country: "Vietnam")
+        let austin = Placemark(areasOfInterest: [], neighbourhood: nil, city: "Austin", region: "TX", country: "United States")
 
-        #expect(PlaceNaming.place(from: placemarks) == Place(name: "Hanoi", context: ["Vietnam"]))
+        #expect(PlaceNaming.place(from: [hanoi]) == Place(name: "Hanoi", context: ["Vietnam"]))
+        #expect(PlaceNaming.place(from: [austin]) == Place(name: "Austin", context: ["TX"]))
     }
 
     @Test("The context never repeats the Place name, or itself")
