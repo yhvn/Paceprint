@@ -8,6 +8,8 @@ struct RunHeadline: View {
     let font: Font
     /// Lines the Place name may take before it shrinks to fit.
     var nameLines = 2
+    /// How far the Place name may shrink to fit those lines.
+    var nameMinimumScale = 0.6
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -20,7 +22,7 @@ struct RunHeadline: View {
                 .font(font)
                 .foregroundStyle(Theme.Colors.textPrimary)
                 .lineLimit(nameLines)
-                .minimumScaleFactor(0.6)
+                .minimumScaleFactor(nameMinimumScale)
                 .shadow(color: .black.opacity(0.4), radius: 6, y: 2)
             Text(run.startDate.formatted(.dateTime.day().month(.abbreviated).year().hour().minute()).uppercased())
                 .paceprintLabel()

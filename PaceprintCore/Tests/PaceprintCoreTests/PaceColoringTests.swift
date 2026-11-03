@@ -138,4 +138,24 @@ struct PaceColoringTests {
         #expect(PaceColor(Pace(secondsPerMetre: 0.5), comparedWith: average) == PaceColor(position: 1))
         #expect(PaceColor(Pace(secondsPerMetre: 0.345), comparedWith: nil) == .average)
     }
+
+    @Test("Live, under 0.5 km the whole line is the middle color, however the Pace varies")
+    func liveUnderHalfKilometre() {
+        let route = route(metres: 490) { $0 < 250 ? 0.3 : 0.42 }
+
+        let pieces = PaceColoring.livePieces(of: route, pauses: [], averagePace: average)
+
+        #expect(pieces.map(\.color) == [.average])
+        #expect(pieces.first?.points == route)
+    }
+
+    @Test("Live, from 0.5 km the line is colored against the running Average pace, as after Stop")
+    func liveFromHalfKilometre() {
+        let route = route(metres: 1_000) { $0 < 500 ? 0.3 : 0.42 }
+
+        let live = PaceColoring.livePieces(of: route, pauses: [], averagePace: average)
+
+        #expect(live == PaceColoring.pieces(of: route, pauses: [], averagePace: average))
+        #expect(live.count > 1)
+    }
 }
