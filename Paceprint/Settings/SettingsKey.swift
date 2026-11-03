@@ -18,6 +18,8 @@ enum SettingsKey {
     static let saveToHealth = "saveToHealth"
     /// The one-time "Save runs to Apple Health?" card has been answered, either way.
     static let isHealthCardAnswered = "isHealthCardAnswered"
+    /// Health's permission sheet has been asked for, so a refusal can be told from never asking.
+    static let isHealthPermissionAsked = "isHealthPermissionAsked"
 }
 
 extension UserDefaults {

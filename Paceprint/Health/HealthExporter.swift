@@ -1,6 +1,7 @@
 import CoreLocation
 import Foundation
 import HealthKit
+import os
 import PaceprintCore
 
 /// A finished Run as Apple Health gets it: a running workout with its Route, distance and active energy.
@@ -8,27 +9,25 @@ struct HealthWorkout {
     let start: Date
     let end: Date
     let pauses: [Pause]
-    /// The Route's fixes taken while moving and good to 50 m, as Health's route builder wants them.
+    /// The Route's fixes taken while moving and good to 50 m (`HealthRoute`).
     let route: [RoutePoint]
     /// Metres.
     let distance: Double
     /// CAL (EST), nil without a body weight.
     let activeCalories: Double?
 
-    /// Fixes vaguer than this are left out of the Route Health keeps.
-    static let maximumHorizontalAccuracy = 50.0
-
     init(_ run: Run) throws {
         start = run.startDate
         end = run.endDate
         pauses = run.pauses
-        route = try run.decodedRoute().filter { !$0.isPaused && $0.horizontalAccuracy <= Self.maximumHorizontalAccuracy }
+        route = HealthRoute.points(of: try run.decodedRoute())
         distance = run.distance
         activeCalories = run.activeCalories
     }
 }
 
-/// Apple Health, as far as Paceprint uses it. The app's seam for HealthKit, faked in tests.
+/// Apple Health, as far as Paceprint uses it: saving and deleting Runs' workouts, and reading body weight.
+/// The app's seam for HealthKit, faked in tests.
 protocol HealthExporter {
     /// Health exists on this device.
     var isAvailable: Bool { get }
@@ -37,8 +36,10 @@ protocol HealthExporter {
     /// Shows the system sheet asking to save workouts, routes, distance and active energy, and to read
     /// body weight. Health shows it only once; after that this returns at once.
     func requestAuthorization() async throws
-    /// Saves `workout`, returning the Health workout's identifier.
+    /// Saves `workout`, returning the Health workout's identifier. Once the workout is saved, this
+    /// returns its identifier even if its Route couldn't be attached, so it's never saved twice.
     func save(_ workout: HealthWorkout) async throws -> UUID
+    /// Deletes the Health workout with `id`; nothing happens if it's already gone.
     func deleteWorkout(_ id: UUID) async throws
     /// The latest body weight in kg, or nil if there's none or reading isn't allowed (they look the same).
     func latestBodyMass() async -> Double?
@@ -48,13 +49,14 @@ protocol HealthExporter {
 final class HealthKitExporter: HealthExporter {
     private let store = HKHealthStore()
 
-    private let shared: Set<HKSampleType> = [
+    private let typesToWrite: Set<HKSampleType> = [
         .workoutType(),
         HKSeriesType.workoutRoute(),
         HKQuantityType(.distanceWalkingRunning),
         HKQuantityType(.activeEnergyBurned),
     ]
-    private let read: Set<HKObjectType> = [HKQuantityType(.bodyMass)]
+    private let typesToRead: Set<HKObjectType> = [HKQuantityType(.bodyMass)]
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Paceprint", category: "Health")
 
     var isAvailable: Bool {
         HKHealthStore.isHealthDataAvailable()
@@ -65,7 +67,7 @@ final class HealthKitExporter: HealthExporter {
     }
 
     func requestAuthorization() async throws {
-        try await store.requestAuthorization(toShare: shared, read: read)
+        try await store.requestAuthorization(toShare: typesToWrite, read: typesToRead)
     }
 
     func save(_ workout: HealthWorkout) async throws -> UUID {
@@ -96,9 +98,14 @@ final class HealthKitExporter: HealthExporter {
         guard let saved = try await builder.finishWorkout() else { throw HealthKitError.notSaved }
 
         if !workout.route.isEmpty {
-            let routeBuilder = HKWorkoutRouteBuilder(healthStore: store, device: .local())
-            try await routeBuilder.insertRouteData(workout.route.map(\.location))
-            try await routeBuilder.finishRoute(with: saved, metadata: nil)
+            do {
+                let routeBuilder = HKWorkoutRouteBuilder(healthStore: store, device: .local())
+                try await routeBuilder.insertRouteData(workout.route.map(\.location))
+                try await routeBuilder.finishRoute(with: saved, metadata: nil)
+            } catch {
+                // The workout is in Health already; saving it again would duplicate it.
+                logger.error("Saved a Run to Health without its Route: \(error)")
+            }
         }
         return saved.uuid
     }
@@ -120,6 +127,7 @@ final class HealthKitExporter: HealthExporter {
     }
 
     enum HealthKitError: Error {
+        /// HealthKit finished the workout without returning it.
         case notSaved
     }
 }

@@ -199,7 +199,7 @@ final class RunRecorder {
             placeNaming = Task { await placeNamer.name(run) }
         }
         if let run, let healthSync {
-            healthSaving = Task { await healthSync.runStopped(run) }
+            healthSaving = Task { await healthSync.save(run) }
         }
         end()
     }

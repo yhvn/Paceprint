@@ -66,8 +66,8 @@ struct SettingsView: View {
 
             if healthSync.isAvailable {
                 Section {
-                    // A closure, not `set: turnHealth`: a method reference here crashes the Swift 6.2 compiler.
-                    Toggle("Save runs to Health", isOn: Binding(get: { saveToHealth }, set: { turnHealth($0) }))
+                    // A closure, not `set: setSavingToHealth`: a method reference here crashes the Swift 6.2 compiler.
+                    Toggle("Save runs to Health", isOn: Binding(get: { saveToHealth }, set: { setSavingToHealth($0) }))
                 } header: {
                     Text("Apple Health")
                 } footer: {
@@ -82,7 +82,7 @@ struct SettingsView: View {
             Section {
                 if healthBodyMass > 0 {
                     // Health's weight wins, so it isn't editable here.
-                    LabeledContent("Body weight", value: "\(massUnit.value(ofKilograms: healthBodyMass).formatted(.number.precision(.fractionLength(0...1)))) \(massUnit.abbreviation) · from Apple Health")
+                    LabeledContent("Body weight", value: "\(weightText(massUnit.value(ofKilograms: healthBodyMass))) · from Apple Health")
                 } else {
                     bodyMassField
                 }
@@ -108,9 +108,9 @@ struct SettingsView: View {
     }
 
     /// Turning it on asks for Health permission the first time, and stays off if saving isn't allowed.
-    private func turnHealth(_ isOn: Bool) {
+    private func setSavingToHealth(_ isOn: Bool) {
         guard isOn else {
-            saveToHealth = false
+            healthSync.turnOff()
             return
         }
         Task {
@@ -119,24 +119,29 @@ struct SettingsView: View {
     }
 
     private var bodyMassField: some View {
-                HStack {
-                    Text("Body weight")
-                    Spacer()
-                    TextField("Not set", value: bodyMassShown, format: .number.precision(.fractionLength(0...1)))
-                        .keyboardType(.decimalPad)
-                        .focused($focus, equals: .bodyMass)
-                        .multilineTextAlignment(.trailing)
-                        .frame(maxWidth: 100)
-                    Text(massUnit.abbreviation)
-                        .foregroundStyle(Theme.Colors.textSecondary)
-                }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("Body weight")
-                .accessibilityValue(bodyMassShown.wrappedValue.map { "\($0.formatted(.number.precision(.fractionLength(0...1)))) \(massUnit.abbreviation)" } ?? "Not set")
+        HStack {
+            Text("Body weight")
+            Spacer()
+            TextField("Not set", value: bodyMassShown, format: .number.precision(.fractionLength(0...1)))
+                .keyboardType(.decimalPad)
+                .focused($focus, equals: .bodyMass)
+                .multilineTextAlignment(.trailing)
+                .frame(maxWidth: 100)
+            Text(massUnit.abbreviation)
+                .foregroundStyle(Theme.Colors.textSecondary)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Body weight")
+        .accessibilityValue(bodyMassShown.wrappedValue.map(weightText) ?? "Not set")
     }
 
     private var massUnit: BodyMassUnit {
         units.bodyMassUnit
+    }
+
+    /// A body weight in kg or lb by units, e.g. "154 lb" or "72.4 kg".
+    private func weightText(_ value: Double) -> String {
+        "\(value.formatted(.number.precision(.fractionLength(0...1)))) \(massUnit.abbreviation)"
     }
 
     /// The body weight in kg or lb by units; nil when not set. Cleared or 0, it's not set; a weight

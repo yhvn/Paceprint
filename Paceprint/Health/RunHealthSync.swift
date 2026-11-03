@@ -10,6 +10,8 @@ final class RunHealthSync {
     @ObservationIgnored private let exporter: any HealthExporter
     @ObservationIgnored private let modelContext: ModelContext
     @ObservationIgnored private let settings: UserDefaults
+    /// Runs being saved now, so the same Run isn't saved twice at once.
+    @ObservationIgnored private var inProgress: Set<PersistentIdentifier> = []
     @ObservationIgnored private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Paceprint", category: "Health")
 
     init(exporter: any HealthExporter, modelContext: ModelContext, settings: UserDefaults = .standard) {
@@ -18,7 +20,7 @@ final class RunHealthSync {
         self.settings = settings
     }
 
-    var isOn: Bool {
+    var isSavingToHealth: Bool {
         settings.bool(forKey: SettingsKey.saveToHealth)
     }
 
@@ -26,9 +28,9 @@ final class RunHealthSync {
         exporter.isAvailable
     }
 
-    /// Permission was asked for and refused, so Settings says where to allow it.
+    /// The system sheet was shown and saving wasn't allowed, so Settings says where to allow it.
     var isRefused: Bool {
-        settings.bool(forKey: SettingsKey.isHealthCardAnswered) && !exporter.isWriteAllowed
+        settings.bool(forKey: SettingsKey.isHealthPermissionAsked) && !exporter.isWriteAllowed
     }
 
     /// Asks for Health permission (the system sheet shows only the first time) and turns "Save runs to
@@ -36,6 +38,7 @@ final class RunHealthSync {
     @discardableResult
     func connect() async -> Bool {
         settings.set(true, forKey: SettingsKey.isHealthCardAnswered)
+        settings.set(true, forKey: SettingsKey.isHealthPermissionAsked)
         do {
             try await exporter.requestAuthorization()
         } catch {
@@ -47,21 +50,31 @@ final class RunHealthSync {
         return isAllowed
     }
 
-    /// A Run was just stopped and saved: with Health on, it's marked for Health and saved there.
-    func runStopped(_ run: Run) async {
-        guard isOn, run.healthWorkoutID == nil else { return }
+    /// Turns "Save runs to Health" off. Runs still waiting to be saved there are forgotten: turning it
+    /// on again later doesn't back-fill them.
+    func turnOff() {
+        settings.set(false, forKey: SettingsKey.saveToHealth)
+        let waiting = (try? modelContext.fetch(FetchDescriptor<Run>(predicate: Run.awaitingHealth))) ?? []
+        waiting.forEach { $0.awaitsHealthSave = false }
+        persist()
+    }
+
+    /// Saves a finished Run to Health if "Save runs to Health" is on and it isn't there yet: on Stop,
+    /// and on Connect for the Run on Summary. Marked first, so a failure is retried on a later launch.
+    func save(_ run: Run) async {
+        guard isSavingToHealth, run.healthWorkoutID == nil else { return }
         run.awaitsHealthSave = true
         persist()
-        await save(run)
+        await write(run)
     }
 
     /// Saves the Runs that couldn't be saved to Health before, one after another, stopping at the first
     /// failure: the rest wait for a later launch.
     func saveRunsAwaitingHealth() async {
-        guard isOn else { return }
+        guard isSavingToHealth else { return }
         let runs = (try? modelContext.fetch(FetchDescriptor<Run>(predicate: Run.awaitingHealth))) ?? []
         for run in runs {
-            guard await save(run) else { return }
+            guard await write(run) else { return }
         }
     }
 
@@ -84,8 +97,11 @@ final class RunHealthSync {
         settings.set(await exporter.latestBodyMass() ?? 0, forKey: SettingsKey.healthBodyMass)
     }
 
+    /// Writes `run` to Health; false if that failed and it's left for a later launch.
     @discardableResult
-    private func save(_ run: Run) async -> Bool {
+    private func write(_ run: Run) async -> Bool {
+        guard inProgress.insert(run.persistentModelID).inserted else { return true }
+        defer { inProgress.remove(run.persistentModelID) }
         do {
             let id = try await exporter.save(HealthWorkout(run))
             // Deleted while it was being saved: take the workout back out of Health.

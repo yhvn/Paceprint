@@ -40,7 +40,7 @@ struct RunHealthSyncTests {
         let run = savedRun()
         let exporter = FakeHealthExporter()
 
-        await sync(exporter).runStopped(run)
+        await sync(exporter).save(run)
 
         let workout = try #require(exporter.saved.first)
         #expect(workout.start == run.startDate)
@@ -50,7 +50,7 @@ struct RunHealthSyncTests {
         #expect(workout.pauses == run.pauses)
         // 101 fixes, less the paused one and the one too vague for Health.
         #expect(workout.route.count == 100)
-        #expect(workout.route.allSatisfy { $0.horizontalAccuracy <= 50 })
+        #expect(workout.route.allSatisfy { $0.horizontalAccuracy <= HealthRoute.maximumHorizontalAccuracy })
         #expect(run.healthWorkoutID == exporter.lastID)
         #expect(!run.awaitsHealthSave)
     }
@@ -60,7 +60,7 @@ struct RunHealthSyncTests {
         let run = savedRun()
         let exporter = FakeHealthExporter()
 
-        await sync(exporter).runStopped(run)
+        await sync(exporter).save(run)
 
         #expect(exporter.saved.isEmpty)
         #expect(!run.awaitsHealthSave)
@@ -72,7 +72,7 @@ struct RunHealthSyncTests {
         settings.set(true, forKey: SettingsKey.saveToHealth)
         let run = savedRun()
 
-        await sync(FakeHealthExporter(fails: true)).runStopped(run)
+        await sync(FakeHealthExporter(fails: true)).save(run)
         #expect(run.awaitsHealthSave)
         #expect(run.healthWorkoutID == nil)
 
@@ -88,7 +88,7 @@ struct RunHealthSyncTests {
         let run = savedRun()
         let exporter = FakeHealthExporter()
         let sync = sync(exporter)
-        await sync.runStopped(run)
+        await sync.save(run)
         let id = try #require(run.healthWorkoutID)
 
         try await sync.delete(run)
@@ -123,6 +123,48 @@ struct RunHealthSyncTests {
 
         settings.set(72.4, forKey: SettingsKey.healthBodyMass)
         #expect(settings.bodyMass == 72.4)
+    }
+
+    @Test("Settings says permission was refused only once the system sheet was shown and saving wasn't allowed")
+    func refused() async {
+        let refused = FakeHealthExporter(refuses: true)
+        let sync = sync(refused)
+
+        settings.set(true, forKey: SettingsKey.isHealthCardAnswered)  // "Not now"
+        #expect(!sync.isRefused)
+
+        await sync.connect()
+        #expect(sync.isRefused)
+    }
+
+    @Test("Turning Health off forgets the Runs still waiting to be saved there")
+    func turnedOff() async {
+        settings.set(true, forKey: SettingsKey.saveToHealth)
+        let run = savedRun()
+        let sync = sync(FakeHealthExporter(fails: true))
+        await sync.save(run)
+        #expect(run.awaitsHealthSave)
+
+        sync.turnOff()
+
+        #expect(!run.awaitsHealthSave)
+        #expect(!settings.bool(forKey: SettingsKey.saveToHealth))
+    }
+
+    @Test("A Run being saved isn't saved again at the same time, e.g. Connect tapped twice")
+    func savedOnce() async {
+        settings.set(true, forKey: SettingsKey.saveToHealth)
+        let run = savedRun()
+        let exporter = FakeHealthExporter()
+        let sync = sync(exporter)
+
+        // Two taps, each its own task, as Connect starts one per tap.
+        let first = Task { await sync.save(run) }
+        let second = Task { await sync.save(run) }
+        await first.value
+        await second.value
+
+        #expect(exporter.saved.count == 1)
     }
 
     @Test("Turning Health on asks for permission, and stays off if it's refused")
@@ -166,6 +208,8 @@ final class FakeHealthExporter: HealthExporter {
 
     func save(_ workout: HealthWorkout) async throws -> UUID {
         if fails { throw Unavailable() }
+        // Gives a second save of the same Run the chance to start meanwhile.
+        await Task.yield()
         saved.append(workout)
         let id = UUID()
         lastID = id

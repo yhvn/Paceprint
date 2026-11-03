@@ -80,31 +80,21 @@ struct SummaryView: View {
     /// Shown once, after the first saved Run: Connect asks for Health permission and saves this Run;
     /// Not now hides the card for good. Settings can turn Health on later.
     private var healthCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Save runs to Apple Health?")
-                .font(.headline)
-                .foregroundStyle(Theme.Colors.textPrimary)
-            Text("Your runs, routes and calories appear in Health and count toward your Activity rings.")
-                .font(.subheadline)
-                .foregroundStyle(Theme.Colors.textSecondary)
-            HStack(spacing: 20) {
-                Button("Connect") {
-                    Task {
-                        if await healthSync.connect() {
-                            await healthSync.runStopped(run)
-                        }
+        NoticeCard(
+            title: "Save runs to Apple Health?",
+            message: "Your runs, routes and calories appear in Health and count toward your Activity rings."
+        ) {
+            Button("Connect") {
+                Task {
+                    if await healthSync.connect() {
+                        await healthSync.save(run)
                     }
                 }
-                .foregroundStyle(Theme.Colors.info)
-                Button("Not now") { isHealthCardAnswered = true }
-                    .foregroundStyle(Theme.Colors.textSecondary)
             }
-            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Theme.Colors.info)
+            Button("Not now") { isHealthCardAnswered = true }
+                .foregroundStyle(Theme.Colors.textSecondary)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(Theme.Colors.glass, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.Colors.glassBorder))
         // Below the photo button, which floats at the top right.
         .padding(.top, 36)
     }
