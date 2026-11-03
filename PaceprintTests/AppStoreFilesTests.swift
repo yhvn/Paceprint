@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import Paceprint
 
-/// What App Review reads from the app bundle itself (#16).
+/// What App Review reads from the app bundle itself (#32, as decided in #16).
 @Suite("App Store files")
 struct AppStoreFilesTests {
     private let info = Bundle.main.infoDictionary ?? [:]
@@ -46,6 +46,11 @@ struct AppStoreFilesTests {
     @Test("Location keeps recording in the background, and nothing else runs there")
     func backgroundModes() {
         #expect(info["UIBackgroundModes"] as? [String] == ["location"])
+    }
+
+    @Test("Only Apple's own encryption is used, so uploads skip the export-compliance question")
+    func encryption() {
+        #expect(info["ITSAppUsesNonExemptEncryption"] as? Bool == false)
     }
 
     @Test("No other apps are queried, Health isn't required to install, and Photos needs no permission string")
