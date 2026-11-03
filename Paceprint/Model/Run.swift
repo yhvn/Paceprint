@@ -34,6 +34,11 @@ final class Run {
     /// The lookup has run and answered, whether or not it found a place. False until then, including
     /// after a failed lookup, so it's tried again on a later launch.
     var isPlaceLookedUp = false
+    /// The body weight CAL (EST) was worked out with, in kg, kept so a later change of weight leaves the
+    /// Run alone; nil if none was set at Stop.
+    var bodyMass: Double?
+    /// CAL (EST): active kcal, rounded to 5; nil without a body weight.
+    var activeCalories: Double?
 
     /// The Place name in capitals, or until it's found the time-of-day name, e.g. MORNING RUN.
     var placeNameShown: String {
@@ -80,12 +85,14 @@ final class Run {
         routeData = RouteEncoding.encode(tracker.points)
     }
 
-    /// Stores the Run `tracker` recorded, stopped at `date`, and marks it finished.
-    /// A Pause still going ends at Stop.
-    func finish(_ tracker: RunTracker, at date: Date) {
+    /// Stores the Run `tracker` recorded, stopped at `date`, and marks it finished, with CAL (EST) for
+    /// `bodyMass` kg if there is one. A Pause still going ends at Stop.
+    func finish(_ tracker: RunTracker, at date: Date, bodyMass: Double? = nil) {
         checkpoint(tracker, at: date)
         pauses = tracker.pauses.map { Pause(start: $0.start, end: $0.end ?? date) }
         isFinished = true
+        self.bodyMass = bodyMass
+        activeCalories = bodyMass.map { Calories.activeKilocalories(route: tracker.points, pauses: pauses, bodyMass: $0) }
     }
 
     /// The look the photo is drawn with.

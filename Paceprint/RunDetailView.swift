@@ -9,8 +9,7 @@ struct RunDetailView: View {
     /// Cut from the Route each time the screen appears, in the units shown.
     @State private var splits: [Split] = []
 
-    /// Kilometres until Settings lets the runner choose.
-    private let unit = DistanceUnit.kilometers
+    @AppStorage(SettingsKey.units) private var unit = DistanceUnit.kilometers
     private let palette = RoutePalette.selected
 
     var body: some View {
@@ -41,7 +40,8 @@ struct RunDetailView: View {
         .overlay(alignment: .top) { topBar }
         .background(Theme.Colors.inkBlack)
         .preferredColorScheme(.dark)
-        .task {
+        // Re-cut whenever the units change.
+        .task(id: unit) {
             splits = (try? run.resumedTracker().splits(per: unit, until: run.endDate)) ?? []
         }
     }

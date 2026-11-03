@@ -35,7 +35,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
             fatalError("Couldn't open the Run store: \(error)")
         }
         placeNamer = RunPlaceNamer(lookup: GeocoderPlaceLookup(), modelContext: container.mainContext)
-        recorder = RunRecorder(source: LiveLocationSource(), modelContext: container.mainContext, placeNamer: placeNamer)
+        recorder = RunRecorder(
+            source: LiveLocationSource(),
+            modelContext: container.mainContext,
+            placeNamer: placeNamer,
+            bodyMass: { UserDefaults.standard.bodyMass }
+        )
     }
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {

@@ -17,16 +17,16 @@ struct RunRecorderTests {
         container = try ModelContainer(for: Run.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
     }
 
-    private func recorder() throws -> RunRecorder {
+    private func recorder(bodyMass: Double? = nil) throws -> RunRecorder {
         let url = try #require(Bundle(for: TestClock.self).url(forResource: fixture, withExtension: "gpx"))
         let clock = clock
         let source = try GPXReplayLocationSource(contentsOf: url, now: { clock.now })
-        return recorder(source)
+        return recorder(source, bodyMass: bodyMass)
     }
 
-    private func recorder(_ source: some LocationSource) -> RunRecorder {
+    private func recorder(_ source: some LocationSource, bodyMass: Double? = nil) -> RunRecorder {
         let clock = clock
-        return RunRecorder(source: source, modelContext: container.mainContext, now: { clock.now })
+        return RunRecorder(source: source, modelContext: container.mainContext, bodyMass: { bodyMass }, now: { clock.now })
     }
 
     /// A good fix `seconds` after the clock's current time, `step` steps of 0.0001° north of the start.
@@ -78,6 +78,35 @@ struct RunRecorderTests {
         #expect(run.movingTime == 403)
         #expect(run.pauses.isEmpty)
         #expect(!recorder.isRecording)
+    }
+
+    @Test("Stop stores the body weight used and CAL (EST), so a later change of weight leaves the Run alone")
+    func storesCalories() async throws {
+        let recorder = try recorder(bodyMass: 70)
+
+        await recorder.start()
+        await recorder.waitUntilSourceFinishes()
+        clock.advance(by: 403)
+        recorder.stop()
+
+        let run = try savedRun()
+        #expect(run.bodyMass == 70)
+        // 1.112 km running at 10 km/h: about 1 kcal × 70 kg × 1.112 km, to the nearest 5.
+        #expect(run.activeCalories == 80)
+    }
+
+    @Test("Without a body weight a Run has no CAL (EST)")
+    func noBodyMass() async throws {
+        let recorder = try recorder()
+
+        await recorder.start()
+        await recorder.waitUntilSourceFinishes()
+        clock.advance(by: 403)
+        recorder.stop()
+
+        let run = try savedRun()
+        #expect(run.bodyMass == nil)
+        #expect(run.activeCalories == nil)
     }
 
     @Test("Pause and Resume: the Pause is saved and nothing in it counts")
