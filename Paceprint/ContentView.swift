@@ -254,5 +254,6 @@ private struct LatestRunCard: View {
 #Preview {
     ContentView()
         .environment(RunRecorder.preview)
+        .environment(RunHealthSync.preview)
         .modelContainer(for: Run.self, inMemory: true)
 }

@@ -14,6 +14,8 @@ struct SummaryView: View {
     @State private var isCopyingPhoto = false
     @State private var photoFailed = false
     @State private var isSharing = false
+    @Environment(RunHealthSync.self) private var healthSync
+    @AppStorage(SettingsKey.isHealthCardAnswered) private var isHealthCardAnswered = false
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Paceprint", category: "Summary")
 
     var body: some View {
@@ -36,6 +38,9 @@ struct SummaryView: View {
 
             VStack(alignment: .leading, spacing: 28) {
                 topBar
+                if healthSync.isAvailable && !isHealthCardAnswered {
+                    healthCard
+                }
                 Spacer()
                 RunHeadline(run: run, font: Theme.Typography.placeName)
                 RunMetrics(run: run, large: .xl, small: .lg)
@@ -70,6 +75,38 @@ struct SummaryView: View {
             // Room below the Route for the place name and metrics.
             RouteMap(run: run, roomBelow: 1)
         }
+    }
+
+    /// Shown once, after the first saved Run: Connect asks for Health permission and saves this Run;
+    /// Not now hides the card for good. Settings can turn Health on later.
+    private var healthCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Save runs to Apple Health?")
+                .font(.headline)
+                .foregroundStyle(Theme.Colors.textPrimary)
+            Text("Your runs, routes and calories appear in Health and count toward your Activity rings.")
+                .font(.subheadline)
+                .foregroundStyle(Theme.Colors.textSecondary)
+            HStack(spacing: 20) {
+                Button("Connect") {
+                    Task {
+                        if await healthSync.connect() {
+                            await healthSync.runStopped(run)
+                        }
+                    }
+                }
+                .foregroundStyle(Theme.Colors.info)
+                Button("Not now") { isHealthCardAnswered = true }
+                    .foregroundStyle(Theme.Colors.textSecondary)
+            }
+            .font(.subheadline.weight(.semibold))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(Theme.Colors.glass, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.Colors.glassBorder))
+        // Below the photo button, which floats at the top right.
+        .padding(.top, 36)
     }
 
     private var topBar: some View {

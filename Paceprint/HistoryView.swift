@@ -7,6 +7,7 @@ import SwiftUI
 /// A Run still being recorded isn't one.
 struct HistoryView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(RunHealthSync.self) private var healthSync
     @Query(filter: Run.finished, sort: \Run.startDate, order: .reverse) private var runs: [Run]
     @State private var openRun: Run?
     @State private var runToDelete: Run?
@@ -28,8 +29,8 @@ struct HistoryView: View {
         .alert("Delete this run?", isPresented: Binding(get: { runToDelete != nil }, set: { if !$0 { runToDelete = nil } }), presenting: runToDelete) { run in
             Button("Delete", role: .destructive) { delete(run) }
             Button("Cancel", role: .cancel) {}
-        } message: { _ in
-            Text("It can't be brought back.")
+        } message: { run in
+            Text(run.healthWorkoutID == nil ? "It can't be brought back." : "It will also be removed from Apple Health.")
         }
     }
 
@@ -79,12 +80,15 @@ struct HistoryView: View {
         }
     }
 
-    /// Deletes `run` for good, with its photo; every total follows at once, as they're read from the store.
+    /// Deletes `run` for good, with its photo and its Apple Health workout; every total follows at once,
+    /// as they're read from the store.
     private func delete(_ run: Run) {
-        do {
-            try modelContext.deleteRun(run)
-        } catch {
-            logger.error("Couldn't delete the Run: \(error)")
+        Task {
+            do {
+                try await healthSync.delete(run)
+            } catch {
+                logger.error("Couldn't delete the Run: \(error)")
+            }
         }
     }
 }
@@ -195,5 +199,6 @@ private struct CardMetric: View {
         HistoryView()
     }
     .modelContainer(for: Run.self, inMemory: true)
+    .environment(RunHealthSync.preview)
     .preferredColorScheme(.dark)
 }

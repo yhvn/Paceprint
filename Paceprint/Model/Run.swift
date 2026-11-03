@@ -39,6 +39,10 @@ final class Run {
     var bodyMass: Double?
     /// CAL (EST): active kcal, rounded to 5; nil without a body weight.
     var activeCalories: Double?
+    /// The Apple Health workout this Run was saved as, so deleting the Run deletes it too.
+    var healthWorkoutID: UUID?
+    /// Health was on at Stop but the Run isn't in Health yet: saving it is tried again on a later launch.
+    var awaitsHealthSave = false
 
     /// The Place name in capitals, or until it's found the time-of-day name, e.g. MORNING RUN.
     var placeNameShown: String {
@@ -48,6 +52,11 @@ final class Run {
     /// The Place context in capitals, joined: e.g. "MANHATTAN · NEW YORK"; empty until found.
     var placeContextShown: String {
         placeContext.joined(separator: " · ").uppercased()
+    }
+
+    /// Finished Runs waiting to be saved to Apple Health.
+    static var awaitingHealth: Predicate<Run> {
+        #Predicate { $0.isFinished && $0.awaitsHealthSave }
     }
 
     /// Finished Runs whose place hasn't been looked up yet.

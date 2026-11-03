@@ -1,8 +1,14 @@
 import PaceprintCore
 import SwiftUI
 
-/// Settings, opened from Home: the runner's name, units, Route colors and body weight.
+/// Settings, opened from Home: the runner's name, units, Route colors, Apple Health and body weight.
 struct SettingsView: View {
+    @Environment(RunHealthSync.self) private var healthSync
+    @AppStorage(SettingsKey.saveToHealth) private var saveToHealth = false
+    /// Apple Health's latest body weight in kg as last read; 0 when there's none, and the field is editable.
+    @AppStorage(SettingsKey.healthBodyMass) private var healthBodyMass = 0.0
+    /// Health permission was asked for and refused.
+    @State private var isHealthRefused = false
     @AppStorage(SettingsKey.name) private var name = ""
     @AppStorage(SettingsKey.units) private var units = DistanceUnit.kilometers
     @AppStorage(SettingsKey.routePalette) private var palette = RoutePalette.pace
@@ -58,21 +64,28 @@ struct SettingsView: View {
                 }
             }
 
-            Section {
-                HStack {
-                    Text("Body weight")
-                    Spacer()
-                    TextField("Not set", value: bodyMassShown, format: .number.precision(.fractionLength(0...1)))
-                        .keyboardType(.decimalPad)
-                        .focused($focus, equals: .bodyMass)
-                        .multilineTextAlignment(.trailing)
-                        .frame(maxWidth: 100)
-                    Text(massUnit.abbreviation)
-                        .foregroundStyle(Theme.Colors.textSecondary)
+            if healthSync.isAvailable {
+                Section {
+                    // A closure, not `set: turnHealth`: a method reference here crashes the Swift 6.2 compiler.
+                    Toggle("Save runs to Health", isOn: Binding(get: { saveToHealth }, set: { turnHealth($0) }))
+                } header: {
+                    Text("Apple Health")
+                } footer: {
+                    if isHealthRefused {
+                        Text("Allow Paceprint in the Health app › Sharing › Apps.")
+                    } else {
+                        Text("Your runs, routes and calories appear in Health.")
+                    }
                 }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("Body weight")
-                .accessibilityValue(bodyMassShown.wrappedValue.map { "\($0.formatted(.number.precision(.fractionLength(0...1)))) \(massUnit.abbreviation)" } ?? "Not set")
+            }
+
+            Section {
+                if healthBodyMass > 0 {
+                    // Health's weight wins, so it isn't editable here.
+                    LabeledContent("Body weight", value: "\(massUnit.value(ofKilograms: healthBodyMass).formatted(.number.precision(.fractionLength(0...1)))) \(massUnit.abbreviation) · from Apple Health")
+                } else {
+                    bodyMassField
+                }
             } footer: {
                 Text("Used to estimate CAL (EST). Changing it doesn't change past runs.")
             }
@@ -88,6 +101,38 @@ struct SettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .scrollContentBackground(.hidden)
         .background(Theme.Colors.inkBlack)
+        .task {
+            isHealthRefused = healthSync.isRefused
+            await healthSync.refreshBodyMass()
+        }
+    }
+
+    /// Turning it on asks for Health permission the first time, and stays off if saving isn't allowed.
+    private func turnHealth(_ isOn: Bool) {
+        guard isOn else {
+            saveToHealth = false
+            return
+        }
+        Task {
+            isHealthRefused = !(await healthSync.connect())
+        }
+    }
+
+    private var bodyMassField: some View {
+                HStack {
+                    Text("Body weight")
+                    Spacer()
+                    TextField("Not set", value: bodyMassShown, format: .number.precision(.fractionLength(0...1)))
+                        .keyboardType(.decimalPad)
+                        .focused($focus, equals: .bodyMass)
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: 100)
+                    Text(massUnit.abbreviation)
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Body weight")
+                .accessibilityValue(bodyMassShown.wrappedValue.map { "\($0.formatted(.number.precision(.fractionLength(0...1)))) \(massUnit.abbreviation)" } ?? "Not set")
     }
 
     private var massUnit: BodyMassUnit {
@@ -117,5 +162,6 @@ struct SettingsView: View {
     NavigationStack {
         SettingsView()
     }
+    .environment(RunHealthSync.preview)
     .preferredColorScheme(.dark)
 }
