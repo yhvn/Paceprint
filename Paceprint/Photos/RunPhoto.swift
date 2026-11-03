@@ -125,6 +125,14 @@ extension [ScrimGradient.Stop] {
         .init(color: Theme.Colors.inkBlack, opacity: 1, location: 1),
     ]
 
+    /// The Story card: dark under the wordmark and behind the metrics and footer.
+    static let storyCard: Self = [
+        .init(opacity: 0.55, location: 0),
+        .init(opacity: 0.05, location: 0.35),
+        .init(opacity: 0.15, location: 0.6),
+        .init(opacity: 0.92, location: 1),
+    ]
+
     /// A History card, left to right: darkest behind its text.
     static let historyCard: Self = [
         .init(opacity: 0.7, location: 0),

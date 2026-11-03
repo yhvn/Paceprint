@@ -60,6 +60,9 @@ struct RouteDrawing {
         )
     }
 
+    /// How far in from its frame the Route is fitted, so the halo and dots aren't cut off at the edges.
+    static let haloInset = 9.0
+
     /// Draws the Route into `context`, fitted into `rect`: a white halo under the Pace-colored pieces,
     /// with red start and green finish dots.
     func draw(in context: GraphicsContext, fittedInto rect: CGRect) {
@@ -97,8 +100,7 @@ struct RouteOverlay: View {
 
     var body: some View {
         Canvas { context, size in
-            // Inset by the halo's half-width, so the line isn't cut off at the edges.
-            route?.draw(in: context, fittedInto: CGRect(origin: .zero, size: size).insetBy(dx: 9, dy: 9))
+            route?.draw(in: context, fittedInto: CGRect(origin: .zero, size: size).insetBy(dx: RouteDrawing.haloInset, dy: RouteDrawing.haloInset))
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)

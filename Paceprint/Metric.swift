@@ -17,6 +17,9 @@ struct Metric: View {
                 .font(Theme.Typography.metric(size))
                 .tracking(Theme.Typography.metricTracking(size))
                 .foregroundStyle(Theme.Colors.textPrimary)
+                // A long value, e.g. "1:42:05", shrinks rather than wraps into what's below.
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
         }
     }
 }

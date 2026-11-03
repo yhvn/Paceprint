@@ -32,7 +32,7 @@ struct StoryCardTests {
         let route = try #require(RouteDrawing(savedRun(), palette: .pace))
         let band = StoryCard.Layout.routeBand
 
-        let place = route.projection(into: band)
+        let place = route.projection(into: StoryCard.Layout.routeFrame)
         let points = route.stretches.joined().map(place)
 
         #expect(points.allSatisfy { band.insetBy(dx: -0.5, dy: -0.5).contains($0) })
@@ -45,8 +45,8 @@ struct StoryCardTests {
         let route = try #require(RouteDrawing(savedRun(), palette: .pace))
         let size = StoryCard.Layout.size
 
-        let mapRect = route.mapRect(fitting: StoryCard.Layout.routeBand, in: size)
-        let place = route.projection(into: StoryCard.Layout.routeBand)
+        let mapRect = route.mapRect(fitting: StoryCard.Layout.routeFrame, in: size)
+        let place = route.projection(into: StoryCard.Layout.routeFrame)
 
         for coordinate in [route.start, route.end] {
             let point = MKMapPoint(coordinate)
@@ -57,6 +57,19 @@ struct StoryCardTests {
             #expect(abs(onMap.x - place(coordinate).x) < 0.01)
             #expect(abs(onMap.y - place(coordinate).y) < 0.01)
         }
+    }
+
+    @Test("The card is shared as a full-size PNG")
+    func sharedAsPNG() throws {
+        let run = savedRun()
+        let card = try #require(StoryCard(run: run, background: nil, route: RouteDrawing(run, palette: .pace)).rendered())
+
+        let png = try #require(StoryCardImage(card).png)
+        let image = try #require(UIImage(data: png))
+
+        #expect(png.starts(with: [0x89, 0x50, 0x4E, 0x47]))
+        #expect(image.size.width * image.scale == 1_080)
+        #expect(image.size.height * image.scale == 1_920)
     }
 
     @Test("A card renders as a 1080 × 1920 image")

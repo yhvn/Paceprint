@@ -22,7 +22,7 @@ struct RunHeadline: View {
                 .font(font)
                 .foregroundStyle(Theme.Colors.textPrimary)
                 .lineLimit(nameLines)
-                .minimumScaleFactor(0.5)
+                .minimumScaleFactor(0.6)
                 .shadow(color: .black.opacity(0.4), radius: 6, y: 2)
             Text(run.startDate.formatted(.dateTime.day().month(.abbreviated).year().hour().minute()).uppercased())
                 .font(Theme.Typography.label)

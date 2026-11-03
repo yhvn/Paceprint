@@ -2,6 +2,7 @@ import os
 import PaceprintCore
 import SwiftData
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Share: the exact Story card that will be sent, the filter strip to change its look, and Share,
 /// which hands the card to the system share sheet.
@@ -41,6 +42,8 @@ struct ShareStorySheet: View {
             if route == nil {
                 route = RouteDrawing(run, palette: .selected)
             }
+            // Cleared first, so Share can't send the card as it was before the filter changed.
+            card = nil
             let background = await StoryCardBackground.load(for: run, route: route)
             card = StoryCard(run: run, background: background, route: route).rendered()
         }
@@ -56,6 +59,7 @@ struct ShareStorySheet: View {
                 ProgressView()
                     .tint(.white)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityLabel("Drawing the Story card")
             }
         }
         .aspectRatio(StoryCard.Layout.size, contentMode: .fit)
@@ -67,24 +71,25 @@ struct ShareStorySheet: View {
         .accessibilityAddTraits(.isImage)
     }
 
+    /// Hands the card to the system share sheet; disabled while the card is being drawn.
     @ViewBuilder
     private var shareButton: some View {
         if let card {
-            let image = Image(uiImage: card)
-            ShareLink(item: image, preview: SharePreview(run.placeNameShown, image: image)) {
-                Label("Share", systemImage: "square.and.arrow.up")
-                    .font(.headline)
-                    .foregroundStyle(Theme.Colors.textOnLight)
-                    .frame(maxWidth: .infinity, minHeight: 52)
-                    .background(Theme.Colors.actionWhite, in: Capsule())
+            ShareLink(item: StoryCardImage(card), preview: SharePreview(run.placeNameShown, image: Image(uiImage: card))) {
+                shareLabel(isEnabled: true)
             }
         } else {
-            Label("Share", systemImage: "square.and.arrow.up")
-                .font(.headline)
-                .foregroundStyle(Theme.Colors.textDisabled)
-                .frame(maxWidth: .infinity, minHeight: 52)
-                .background(Theme.Colors.glass, in: Capsule())
+            Button {} label: { shareLabel(isEnabled: false) }
+                .disabled(true)
         }
+    }
+
+    private func shareLabel(isEnabled: Bool) -> some View {
+        Label("Share", systemImage: "square.and.arrow.up")
+            .font(.headline)
+            .foregroundStyle(isEnabled ? Theme.Colors.textOnLight : Theme.Colors.textDisabled)
+            .frame(maxWidth: .infinity, minHeight: 52)
+            .background(isEnabled ? Theme.Colors.actionWhite : Theme.Colors.glass, in: Capsule())
     }
 
     /// The filter is the Run's, so changing it here changes it everywhere, as on Summary.
@@ -94,5 +99,19 @@ struct ShareStorySheet: View {
         } catch {
             logger.error("Couldn't save the filter: \(error)")
         }
+    }
+}
+
+/// The Story card as the share sheet gets it: a full-size PNG file named after the app.
+struct StoryCardImage: Transferable {
+    let png: Data?
+
+    init(_ card: UIImage) {
+        png = card.pngData()
+    }
+
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(exportedContentType: .png) { $0.png ?? Data() }
+            .suggestedFileName("Paceprint.png")
     }
 }
