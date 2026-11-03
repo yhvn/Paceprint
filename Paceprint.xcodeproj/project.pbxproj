@@ -356,6 +356,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Paceprint/Info.plist;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Paceprint reads your body weight to estimate calories.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Paceprint saves your runs, routes and calories to Apple Health.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Paceprint uses your location to record the route, distance and pace of your runs.";
@@ -393,6 +394,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Paceprint/Info.plist;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Paceprint reads your body weight to estimate calories.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Paceprint saves your runs, routes and calories to Apple Health.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Paceprint uses your location to record the route, distance and pace of your runs.";
