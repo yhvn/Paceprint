@@ -62,8 +62,9 @@ struct StoryCard: View {
                 .foregroundStyle(Theme.Colors.textPrimary.opacity(0.85))
                 .padding(.top, Layout.wordmarkTop)
                 .frame(maxHeight: .infinity, alignment: .top)
-            // One line, so the block stays between the Route's band and the metrics.
-            RunHeadline(run: run, font: .system(size: 44, weight: .heavy), nameLines: 1)
+            // One line, so the block stays between the Route's band and the metrics; a long Place name
+            // shrinks further than elsewhere rather than being cut off.
+            RunHeadline(run: run, font: .system(size: 44, weight: .heavy), nameLines: 1, nameMinimumScale: 0.4)
                 .padding(.top, Layout.placeTop)
                 .padding(.horizontal, 22)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

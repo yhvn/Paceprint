@@ -80,6 +80,23 @@ struct RunRecorderTests {
         #expect(!recorder.isRecording)
     }
 
+    @Test("While recording, the live map can read the Route so far and its Pauses")
+    func exposesLiveRoute() async throws {
+        let recorder = try recorder()
+
+        await recorder.start()
+        await recorder.waitUntilSourceFinishes()
+        clock.advance(by: 400)
+        recorder.pause()
+
+        // 100 steps; the teleport fix in the fixture is dropped.
+        #expect(recorder.route.count == 101)
+        #expect(recorder.route.last?.cumulativeDistance == recorder.distance)
+        #expect(recorder.pauses.count == 1)
+        recorder.stop()
+        #expect(recorder.route.isEmpty)
+    }
+
     @Test("Stop stores the Route's thumbnail, so Home and History can draw it without decoding the Route")
     func storesThumbnail() async throws {
         let recorder = try recorder()

@@ -27,6 +27,17 @@ struct RouteDrawing {
         )
     }
 
+    /// The Run in progress so far, colored as the live map colors it (`PaceColoring.livePieces`); nil
+    /// until it has something to draw.
+    init?(live route: [RoutePoint], pauses: [Pause], averagePace: Pace?, palette: RoutePalette) {
+        self.init(
+            stretches: PaceColoring.stretches(of: route, pauses: pauses).map { $0.map(\.coordinate) },
+            pieces: PaceColoring.livePieces(of: route, pauses: pauses, averagePace: averagePace).map {
+                Piece(coordinates: $0.points.map(\.coordinate), color: palette.color(for: $0.color))
+            }
+        )
+    }
+
     /// What a card draws from a Run's stored thumbnail; nil if it has nothing to draw.
     init?(_ thumbnail: RouteThumbnail, palette: RoutePalette) {
         let lines = thumbnail.lines.map { line in (line.points.map(\.coordinate), line.colors) }
@@ -187,7 +198,7 @@ struct EndpointDot: View {
     }
 }
 
-private extension RoutePoint {
+extension RoutePoint {
     var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
     }

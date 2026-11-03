@@ -83,6 +83,18 @@ public enum PaceColoring {
         }
     }
 
+    /// Until the Run has covered this many metres, the live line is all the middle color: the Average
+    /// pace is still too unsettled to compare against.
+    static let liveColorDistance = 500.0
+
+    /// The Run in progress as pieces of one Pace color each: under 0.5 km all the middle color, from
+    /// then on compared with the running `averagePace`, exactly as `pieces(of:pauses:averagePace:)`.
+    /// Called again every 5 s, so the whole line is recolored as the Average pace changes.
+    public static func livePieces(of route: [RoutePoint], pauses: [Pause], averagePace: Pace?) -> [RoutePiece] {
+        let covered = route.last?.cumulativeDistance ?? 0
+        return pieces(of: route, pauses: pauses, averagePace: covered < liveColorDistance ? nil : averagePace)
+    }
+
     /// The Pace color of each segment of `stretch`, between one point and the next: the color between
     /// its two points', each point's Pace averaged over the surrounding 100 m, rounded to a step.
     static func segmentColors(of stretch: [RoutePoint], averagePace: Pace?) -> [PaceColor] {

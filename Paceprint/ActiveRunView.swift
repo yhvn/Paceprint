@@ -1,7 +1,8 @@
 import PaceprintCore
 import SwiftUI
 
-/// Active run: the live distance, TIME and Paces, GPS and location access, Pause/Resume and Stop.
+/// Active run: the live map, the live distance, TIME and Paces, GPS and location access, Pause/Resume
+/// and Stop.
 struct ActiveRunView: View {
     @Environment(RunRecorder.self) private var recorder
     @Environment(\.openURL) private var openURL
@@ -13,9 +14,10 @@ struct ActiveRunView: View {
 
     var body: some View {
         ZStack {
-            Theme.Colors.inkBlack.ignoresSafeArea()
+            // The map behind everything, the runner centred above the panel at the bottom.
+            LiveRouteMap(roomBelow: Self.panelHeight)
 
-            VStack(spacing: 40) {
+            VStack(spacing: 0) {
                 if recorder.isAccessLost {
                     accessLostBanner
                 } else {
@@ -26,46 +28,7 @@ struct ActiveRunView: View {
 
                 Spacer()
 
-                // Time-based values are read from the recorder's clock; redraw them every second.
-                TimelineView(.periodic(from: .now, by: 1)) { _ in
-                    VStack(spacing: 40) {
-                        Metric(label: units.abbreviation, value: RunFormat.distance(recorder.distance, in: units), size: .hero)
-                        VStack(spacing: 32) {
-                            Metric(label: "TIME", value: RunFormat.time(recorder.movingTime), size: .lg)
-                            HStack(spacing: 48) {
-                                Metric(label: "PACE", value: RunFormat.pace(recorder.currentPace, per: units), size: .md)
-                                Metric(label: "AVG PACE", value: RunFormat.pace(recorder.averagePace, per: units), size: .md)
-                            }
-                        }
-                    }
-                    // One element, read when focused; never re-announced as the numbers change.
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(SpokenFormat.activeRun(distance: recorder.distance, movingTime: recorder.movingTime, pace: recorder.currentPace, units: units))
-                }
-
-                Spacer()
-
-                HStack(spacing: 32) {
-                    if recorder.isPaused {
-                        // Dimmed while location access is off; tapping it then says why it won't Resume.
-                        RoundButton(title: "RESUME", label: "Resume run", color: Theme.Colors.actionWhite, textColor: Theme.Colors.textOnLight) {
-                            if recorder.isAccessLost {
-                                isShowingAccessLost = true
-                            } else {
-                                recorder.resume()
-                            }
-                        }
-                        .opacity(recorder.isAccessLost ? 0.4 : 1)
-                    } else {
-                        RoundButton(title: "PAUSE", label: "Pause run", color: Theme.Colors.pauseAmber, textColor: Theme.Colors.textOnLight) {
-                            recorder.pause()
-                        }
-                    }
-                    RoundButton(title: "STOP", label: "Stop run", color: Theme.Colors.liveRed, textColor: Theme.Colors.textPrimary) {
-                        recorder.stop()
-                    }
-                }
-                .padding(.bottom, 24)
+                panel
             }
         }
         // Grouped with the photo screens (#15): labels scale up to XXXL.
@@ -101,6 +64,67 @@ struct ActiveRunView: View {
             Text(Self.accessLostMessage)
         }
         .preferredColorScheme(.dark)
+    }
+
+    /// About how tall the panel is at the default text size: the map keeps this much clear below the runner.
+    private static let panelHeight: CGFloat = 400
+
+    /// The metrics and the controls at the bottom, over a gradient so they read on the map.
+    private var panel: some View {
+        VStack(spacing: 28) {
+            // Time-based values are read from the recorder's clock; redraw them every second.
+            TimelineView(.periodic(from: .now, by: 1)) { _ in
+                VStack(spacing: 24) {
+                    Metric(label: units.abbreviation, value: RunFormat.distance(recorder.distance, in: units), size: .hero)
+                    VStack(spacing: 20) {
+                        Metric(label: "TIME", value: RunFormat.time(recorder.movingTime), size: .lg)
+                        HStack(spacing: 48) {
+                            Metric(label: "PACE", value: RunFormat.pace(recorder.currentPace, per: units), size: .md)
+                            Metric(label: "AVG PACE", value: RunFormat.pace(recorder.averagePace, per: units), size: .md)
+                        }
+                    }
+                }
+                // One element, read when focused; never re-announced as the numbers change.
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(SpokenFormat.activeRun(distance: recorder.distance, movingTime: recorder.movingTime, pace: recorder.currentPace, units: units))
+            }
+
+            HStack(spacing: 32) {
+                if recorder.isPaused {
+                    // Dimmed while location access is off; tapping it then says why it won't Resume.
+                    RoundButton(title: "RESUME", label: "Resume run", color: Theme.Colors.actionWhite, textColor: Theme.Colors.textOnLight) {
+                        if recorder.isAccessLost {
+                            isShowingAccessLost = true
+                        } else {
+                            recorder.resume()
+                        }
+                    }
+                    .opacity(recorder.isAccessLost ? 0.4 : 1)
+                } else {
+                    RoundButton(title: "PAUSE", label: "Pause run", color: Theme.Colors.pauseAmber, textColor: Theme.Colors.textOnLight) {
+                        recorder.pause()
+                    }
+                }
+                RoundButton(title: "STOP", label: "Stop run", color: Theme.Colors.liveRed, textColor: Theme.Colors.textPrimary) {
+                    recorder.stop()
+                }
+            }
+            .padding(.bottom, 24)
+        }
+        .padding(.top, 56)
+        .frame(maxWidth: .infinity)
+        .background {
+            LinearGradient(
+                stops: [
+                    .init(color: Theme.Colors.inkBlack.opacity(0), location: 0),
+                    .init(color: Theme.Colors.inkBlack.opacity(0.78), location: 0.3),
+                    .init(color: Theme.Colors.inkBlack.opacity(0.96), location: 1),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea(edges: .bottom)
+        }
     }
 
     /// Whole Splits completed so far, in the units shown; cut by PaceprintCore, as Run detail cuts them.

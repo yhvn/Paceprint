@@ -18,6 +18,10 @@ final class RunRecorder {
     var currentPace: Pace? { tracker?.currentPace }
     var averagePace: Pace? { tracker?.averagePace(at: now()) }
     var gpsStatus: GPSStatus { tracker?.gpsStatus(at: now()) ?? .finding }
+    /// The Route of the Run in progress so far, for the live map.
+    var route: [RoutePoint] { tracker?.points ?? [] }
+    /// Its Pauses so far, where the live line breaks.
+    var pauses: [Pause] { tracker?.pauses ?? [] }
 
     /// The whole Splits of one `units` each completed so far in the Run in progress.
     func wholeSplits(per units: DistanceUnit) -> [Split] {
