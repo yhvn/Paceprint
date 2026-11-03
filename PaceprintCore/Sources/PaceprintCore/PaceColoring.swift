@@ -64,14 +64,11 @@ public enum PaceColoring {
     /// pieces of the same color are merged.
     public static func pieces(of route: [RoutePoint], pauses: [Pause], averagePace: Pace?) -> [RoutePiece] {
         stretches(of: route, pauses: pauses).flatMap { stretch in
-            let positions = stretch.indices.map { index in
-                PaceColor(smoothedPace(at: index, in: stretch), comparedWith: averagePace).position
-            }
+            let colors = segmentColors(of: stretch, averagePace: averagePace)
             var pieces: [RoutePiece] = []
             var pieceStart = 0
             var pieceColor: PaceColor?
-            for index in stretch.indices.dropLast() {
-                let color = PaceColor(position: rounded((positions[index] + positions[index + 1]) / 2))
+            for (index, color) in colors.enumerated() {
                 guard color != pieceColor else { continue }
                 if let pieceColor {
                     pieces.append(RoutePiece(points: Array(stretch[pieceStart...index]), color: pieceColor))
@@ -83,6 +80,17 @@ public enum PaceColoring {
                 pieces.append(RoutePiece(points: Array(stretch[pieceStart...]), color: pieceColor))
             }
             return pieces
+        }
+    }
+
+    /// The Pace color of each segment of `stretch`, between one point and the next: the color between
+    /// its two points', each point's Pace averaged over the surrounding 100 m, rounded to a step.
+    static func segmentColors(of stretch: [RoutePoint], averagePace: Pace?) -> [PaceColor] {
+        let positions = stretch.indices.map { index in
+            PaceColor(smoothedPace(at: index, in: stretch), comparedWith: averagePace).position
+        }
+        return stretch.indices.dropLast().map { index in
+            PaceColor(position: rounded((positions[index] + positions[index + 1]) / 2))
         }
     }
 

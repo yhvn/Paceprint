@@ -123,8 +123,8 @@ private struct TotalTile: View {
     }
 }
 
-/// One Run in History over its photo: its date over where the Place name will go, then its numbers.
-/// No Route: History never decodes one (ADR 0001).
+/// One Run in History over its photo: its date over where the Place name will go, then its numbers, with
+/// its Route down the right. The Route is drawn from its thumbnail: History never decodes one (ADR 0001).
 private struct HistoryCard: View {
     let run: Run
     @AppStorage(SettingsKey.units) private var units = DistanceUnit.kilometers
@@ -163,15 +163,18 @@ private struct HistoryCard: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// The Run's photo, else the plain card.
+    /// The Run's photo, else the plain card, with the Route in a 130 pt band down the right.
     private var photo: some View {
-        ZStack {
+        ZStack(alignment: .trailing) {
             Theme.Colors.sheetDark
             if let fileName = run.photoFileName {
                 // A card is ~360 × 132 pt; this covers its width at 3× for most photos.
                 RunPhoto(fileName: fileName, filter: run.photoFilter, maxPixelSize: 1200) { Color.clear }
                 ScrimGradient(stops: .historyCard, startPoint: .leading, endPoint: .trailing, scrim: run.scrim)
             }
+            RouteThumbnailView(run: run)
+                .frame(width: 130)
+                .opacity(0.95)
         }
     }
 }

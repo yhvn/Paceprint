@@ -19,15 +19,41 @@ struct RouteDrawing {
     /// Nil if the Route can't be read, or has nothing to draw.
     init?(_ run: Run, palette: RoutePalette) {
         guard let route = try? run.decodedRoute() else { return nil }
-        let stretches = PaceColoring.stretches(of: route, pauses: run.pauses)
+        self.init(
+            stretches: PaceColoring.stretches(of: route, pauses: run.pauses).map { $0.map(\.coordinate) },
+            pieces: PaceColoring.pieces(of: route, pauses: run.pauses, averagePace: run.averagePace).map {
+                Piece(coordinates: $0.points.map(\.coordinate), color: palette.color(for: $0.color))
+            }
+        )
+    }
+
+    /// What a card draws from a Run's stored thumbnail; nil if it has nothing to draw.
+    init?(_ thumbnail: RouteThumbnail, palette: RoutePalette) {
+        let lines = thumbnail.lines.map { line in (line.points.map(\.coordinate), line.colors) }
+        self.init(
+            stretches: lines.map(\.0),
+            pieces: lines.flatMap { coordinates, colors in
+                // Neighbouring segments of one color are drawn as one piece, so their joins are round.
+                var pieces: [(coordinates: [CLLocationCoordinate2D], color: PaceColor)] = []
+                for (index, color) in colors.enumerated() {
+                    if pieces.last?.color == color {
+                        pieces[pieces.count - 1].coordinates.append(coordinates[index + 1])
+                    } else {
+                        pieces.append(([coordinates[index], coordinates[index + 1]], color))
+                    }
+                }
+                return pieces.map { Piece(coordinates: $0.coordinates, color: palette.color(for: $0.color)) }
+            }
+        )
+    }
+
+    private init?(stretches: [[CLLocationCoordinate2D]], pieces: [Piece]) {
         guard let start = stretches.first?.first, let end = stretches.last?.last else { return nil }
-        self.stretches = stretches.map { $0.map(\.coordinate) }
-        pieces = PaceColoring.pieces(of: route, pauses: run.pauses, averagePace: run.averagePace).map {
-            Piece(coordinates: $0.points.map(\.coordinate), color: palette.color(for: $0.color))
-        }
-        self.start = start.coordinate
-        self.end = end.coordinate
-        bounds = Self.bounds(of: self.stretches.joined().map(MKMapPoint.init), atLatitude: start.latitude)
+        self.stretches = stretches
+        self.pieces = pieces
+        self.start = start
+        self.end = end
+        bounds = Self.bounds(of: stretches.joined().map(MKMapPoint.init), atLatitude: start.latitude)
     }
 
     /// Frames the Route on a map, with `roomBelow` times its height of empty map below it.
@@ -60,26 +86,44 @@ struct RouteDrawing {
         )
     }
 
+    /// How thick the Route is drawn.
+    struct Style {
+        let lineWidth: Double
+        let haloWidth: Double
+        /// The start and finish dots, white ring included.
+        let dotDiameter: Double
+        let dotRing: Double
+
+        /// Over a photo or map that fills the screen.
+        static let full = Style(lineWidth: 5, haloWidth: 10, dotDiameter: 18, dotRing: 3)
+        /// On a card on Home or History.
+        static let thumbnail = Style(lineWidth: 3.5, haloWidth: 6.5, dotDiameter: 9, dotRing: 1.5)
+
+        /// How far in from its frame the Route is fitted, so the halo and dots aren't cut off at the edges.
+        var inset: Double { max(haloWidth, dotDiameter) / 2 }
+    }
+
     /// How far in from its frame the Route is fitted, so the halo and dots aren't cut off at the edges.
-    static let haloInset = 9.0
+    static let haloInset = Style.full.inset
 
     /// Draws the Route into `context`, fitted into `rect`: a white halo under the Pace-colored pieces,
     /// with red start and green finish dots.
-    func draw(in context: GraphicsContext, fittedInto rect: CGRect) {
+    func draw(in context: GraphicsContext, fittedInto rect: CGRect, style: Style = .full) {
         let place = projection(into: rect)
         func path(_ coordinates: [CLLocationCoordinate2D]) -> Path {
             Path { $0.addLines(coordinates.map(place)) }
         }
         for stretch in stretches {
-            context.stroke(path(stretch), with: .color(Theme.Colors.routeHalo), style: StrokeStyle(lineWidth: 10, lineCap: .round, lineJoin: .round))
+            context.stroke(path(stretch), with: .color(Theme.Colors.routeHalo), style: StrokeStyle(lineWidth: style.haloWidth, lineCap: .round, lineJoin: .round))
         }
         for piece in pieces {
-            context.stroke(path(piece.coordinates), with: .color(piece.color), style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+            context.stroke(path(piece.coordinates), with: .color(piece.color), style: StrokeStyle(lineWidth: style.lineWidth, lineCap: .round, lineJoin: .round))
         }
         for (coordinate, color) in [(start, Theme.Colors.liveRed), (end, Theme.Colors.paceFast)] {
             let center = place(coordinate)
-            context.fill(Path(ellipseIn: CGRect(x: center.x - 9, y: center.y - 9, width: 18, height: 18)), with: .color(.white))
-            context.fill(Path(ellipseIn: CGRect(x: center.x - 6, y: center.y - 6, width: 12, height: 12)), with: .color(color))
+            let outer = style.dotDiameter / 2, inner = outer - style.dotRing
+            context.fill(Path(ellipseIn: CGRect(x: center.x - outer, y: center.y - outer, width: 2 * outer, height: 2 * outer)), with: .color(.white))
+            context.fill(Path(ellipseIn: CGRect(x: center.x - inner, y: center.y - inner, width: 2 * inner, height: 2 * inner)), with: .color(color))
         }
     }
 
@@ -112,6 +156,24 @@ struct RouteOverlay: View {
     }
 }
 
+/// A Run's Route on a card on Home or History, drawn from its stored thumbnail so the Route is never
+/// decoded (ADR 0001). Decorative: the card already says where the Run was.
+struct RouteThumbnailView: View {
+    let run: Run
+    @AppStorage(SettingsKey.routePalette) private var palette = RoutePalette.pace
+
+    var body: some View {
+        let route = run.routeThumbnail.flatMap { RouteDrawing($0, palette: palette) }
+        Canvas { context, size in
+            // Room around the Route so its ends don't touch the card's edges.
+            let inset = RouteDrawing.Style.thumbnail.inset + 8
+            route?.draw(in: context, fittedInto: CGRect(origin: .zero, size: size).insetBy(dx: inset, dy: inset), style: .thumbnail)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
 /// The start (red) or finish (green) of the Route on a map: a colored dot in a white ring.
 struct EndpointDot: View {
     let color: Color
@@ -126,6 +188,12 @@ struct EndpointDot: View {
 }
 
 private extension RoutePoint {
+    var coordinate: CLLocationCoordinate2D {
+        CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
+}
+
+private extension RouteThumbnail.Point {
     var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
     }

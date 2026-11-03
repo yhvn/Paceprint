@@ -80,6 +80,24 @@ struct RunRecorderTests {
         #expect(!recorder.isRecording)
     }
 
+    @Test("Stop stores the Route's thumbnail, so Home and History can draw it without decoding the Route")
+    func storesThumbnail() async throws {
+        let recorder = try recorder()
+
+        await recorder.start()
+        await recorder.waitUntilSourceFinishes()
+        clock.advance(by: 403)
+        recorder.stop()
+
+        let run = try savedRun()
+        let route = try run.decodedRoute()
+        let thumbnail = try #require(run.routeThumbnail)
+        // Due north in a straight line: just its two ends.
+        #expect(thumbnail.lines.map(\.points) == [[route.first, route.last].compactMap { $0 }.map {
+            RouteThumbnail.Point(latitude: $0.latitude, longitude: $0.longitude)
+        }])
+    }
+
     @Test("Stop stores the body weight used and CAL (EST), so a later change of weight leaves the Run alone")
     func storesCalories() async throws {
         let recorder = try recorder(bodyMass: 70)

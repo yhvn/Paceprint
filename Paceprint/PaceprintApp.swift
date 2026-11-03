@@ -50,6 +50,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         // iOS relaunches the app with this key when it was killed while recording location in the background.
         recorder.recoverUnfinishedRun(relaunchedInBackground: launchOptions?[.location] != nil)
+        // Route thumbnails for Runs saved before there were any.
+        Task { @MainActor [container] in await Run.makeMissingThumbnails(in: container.mainContext) }
         // Places that couldn't be looked up before, e.g. offline after Stop, are tried again quietly.
         Task { [placeNamer] in await placeNamer.nameRunsAwaitingPlace() }
         // Health's latest body weight for CAL (EST), and Runs that couldn't be saved to Health before.

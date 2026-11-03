@@ -218,13 +218,46 @@ struct ContentView: View {
     }
 }
 
-/// The most recent Run on Home: its date over where the Place name will go, then its numbers.
-/// No Route: Home never decodes one (ADR 0001).
+/// The most recent Run on Home: its Route in a square tile, then its date over where the Place name will
+/// go, then its numbers. The Route is drawn from its thumbnail: Home never decodes one (ADR 0001).
 private struct LatestRunCard: View {
     let run: Run
     @AppStorage(SettingsKey.units) private var units = DistanceUnit.kilometers
 
     var body: some View {
+        HStack(spacing: 0) {
+            if run.routeThumbnail?.lines.isEmpty == false {
+                routeTile
+            }
+            details
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(minHeight: 96)
+        // As tall as its text needs, never stretched to fill Home.
+        .fixedSize(horizontal: false, vertical: true)
+        .background(LinearGradient(colors: [Theme.Colors.sheetMid, Theme.Colors.sheetDark], startPoint: .topLeading, endPoint: .bottomTrailing))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.1), lineWidth: 0.5))
+        .accessibilityElement(children: .combine)
+    }
+
+    /// The Route over the Run's photo, else the night map color, 96 pt wide and as tall as the card.
+    private var routeTile: some View {
+        ZStack {
+            Theme.Colors.mapNight
+            if let fileName = run.photoFileName {
+                // 96 pt square at 3×.
+                // No text over it, so no Scrim: the Route's halo keeps it readable, as in the design.
+                RunPhoto(fileName: fileName, filter: run.photoFilter, maxPixelSize: 300) { Color.clear }
+            }
+            RouteThumbnailView(run: run)
+        }
+        .frame(width: 96)
+        .frame(maxHeight: .infinity)
+        .clipped()
+    }
+
+    private var details: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("LAST RUN · \(RunFormat.cardDate(run.startDate))")
                 .paceprintLabel()
@@ -245,14 +278,7 @@ private struct LatestRunCard: View {
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(minHeight: 96)
-        // As tall as its text needs, never stretched to fill Home.
-        .fixedSize(horizontal: false, vertical: true)
-        .background(LinearGradient(colors: [Theme.Colors.sheetMid, Theme.Colors.sheetDark], startPoint: .topLeading, endPoint: .bottomTrailing))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.1), lineWidth: 0.5))
-        .accessibilityElement(children: .combine)
+        .frame(maxWidth: .infinity, minHeight: 96, alignment: .leading)
     }
 }
 
