@@ -1,4 +1,5 @@
 import Foundation
+import os
 import PaceprintCore
 import SwiftData
 
@@ -18,6 +19,10 @@ final class Run {
     var distance: Double
     /// The Route's points in `RouteEncoding`'s versioned format.
     @Attribute(.externalStorage) var routeData: Data
+    /// The Route simplified to a few dozen points in Pace colors, in `RouteThumbnail`'s versioned format:
+    /// what Home and History draw instead of decoding the Route. Nil until made at Stop, or on launch
+    /// for a Run saved before thumbnails existed.
+    var routeThumbnailData: Data?
     /// False while the Run is still being recorded: it's only a checkpoint, kept in case the app is
     /// killed, and never shown in History or totals.
     var isFinished = true
@@ -57,6 +62,11 @@ final class Run {
     /// Finished Runs waiting to be saved to Apple Health.
     static var awaitingHealth: Predicate<Run> {
         #Predicate { $0.isFinished && $0.awaitsHealthSave }
+    }
+
+    /// Finished Runs saved before thumbnails existed.
+    static var awaitingThumbnail: Predicate<Run> {
+        #Predicate { $0.isFinished && $0.routeThumbnailData == nil }
     }
 
     /// Finished Runs whose place hasn't been looked up yet.
@@ -102,6 +112,35 @@ final class Run {
         isFinished = true
         self.bodyMass = bodyMass
         activeCalories = bodyMass.map { Calories.activeKilocalories(route: tracker.points, pauses: pauses, bodyMass: $0) }
+        storeThumbnail(of: tracker.points)
+    }
+
+    /// Makes and stores the thumbnail of `route`, this Run's Route.
+    func storeThumbnail(of route: [RoutePoint]) {
+        routeThumbnailData = RouteThumbnail(route: route, pauses: pauses, averagePace: averagePace).encoded()
+    }
+
+    /// The stored thumbnail; nil if there's none yet or it can't be read.
+    var routeThumbnail: RouteThumbnail? {
+        routeThumbnailData.flatMap { try? RouteThumbnail(decoding: $0) }
+    }
+
+    /// Makes the missing thumbnails of Runs saved before thumbnails existed, from their stored Routes. A
+    /// Route that can't be read gets an empty thumbnail, so it isn't tried again every launch.
+    @MainActor
+    static func makeMissingThumbnails(in modelContext: ModelContext) async {
+        let runs = (try? modelContext.fetch(FetchDescriptor<Run>(predicate: awaitingThumbnail))) ?? []
+        for run in runs {
+            run.storeThumbnail(of: (try? run.decodedRoute()) ?? [])
+            // One Run at a time, so a long History doesn't hold up the screen.
+            await Task.yield()
+        }
+        guard !runs.isEmpty else { return }
+        do {
+            try modelContext.save()
+        } catch {
+            Logger(subsystem: Bundle.main.bundleIdentifier ?? "Paceprint", category: "Run").error("Couldn't save the Route thumbnails: \(error)")
+        }
     }
 
     /// The look the photo is drawn with.

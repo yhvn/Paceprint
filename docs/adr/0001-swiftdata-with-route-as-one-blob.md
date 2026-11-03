@@ -11,3 +11,4 @@ Runs are stored with SwiftData (iOS 17+, on-device only), but a Run's Route is n
 
 - The point encoding needs a version byte so the format can change without a SwiftData migration.
 - Summary fields (dates, Elapsed time, Moving time, distance, calories, body weight used) are stored alongside so Home and History never decode a Route.
+- The cards on Home and History draw a Run's Route from a stored `RouteThumbnail` (at most 48 points with their Pace colors, its own version byte), made at Stop, never from the Route itself (#43).
