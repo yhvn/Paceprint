@@ -6,6 +6,7 @@ import SwiftUI
 /// red start and green finish dots. Plain dark background when there's no Route to draw.
 struct RouteMap: View {
     let run: Run
+    @AppStorage(SettingsKey.units) private var units = DistanceUnit.kilometers
     /// Empty map to leave below the Route, as a multiple of its height, for whatever sits over it.
     var roomBelow = 0.0
     /// Worked out once the map appears; nil until then, or if the Route has nothing to draw.
@@ -18,6 +19,9 @@ struct RouteMap: View {
                 map(route)
             }
         }
+        // One element; the Pace colors are never the only way to tell the Route.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(SpokenFormat.routeMap(distance: run.distance, startingIn: run.placeName, units: units))
         .task {
             route = RouteDrawing(run, palette: .selected)
         }

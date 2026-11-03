@@ -49,6 +49,9 @@ struct StoryCard: View {
         .frame(width: Layout.size.width, height: Layout.size.height)
         .clipped()
         .environment(\.colorScheme, .dark)
+        // A fixed image: the design's look, whatever the text size or contrast settings.
+        .environment(\.isStoryCard, true)
+        .dynamicTypeSize(.large)
     }
 
     private var text: some View {

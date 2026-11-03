@@ -30,9 +30,7 @@ struct ContentView: View {
                     topBar
                     Spacer()
                     Text("PACEPRINT")
-                        .font(Theme.Typography.label)
-                        .tracking(Theme.Typography.wordmarkTracking)
-                        .foregroundStyle(Theme.Colors.textSecondary)
+                        .paceprintLabel(tracking: Theme.Typography.wordmarkTracking)
                         .padding(.bottom, 20)
                     startButton
                     Spacer()
@@ -50,6 +48,8 @@ struct ContentView: View {
                 .padding(.bottom, 20)
             }
             .toolbar(.hidden, for: .navigationBar)
+            // A photo screen: labels scale up to XXXL. History and Settings, pushed above it, take every size.
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         }
         .fullScreenCover(item: $openRun) { RunDetailView(run: $0) }
         // Health's body weight may have changed while the app was away; Stop reads it for CAL (EST).
@@ -135,9 +135,7 @@ struct ContentView: View {
         } else {
             VStack(alignment: .leading, spacing: 2) {
                 Text("GOOD MORNING")
-                    .font(Theme.Typography.label)
-                    .tracking(Theme.Typography.labelTracking)
-                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .paceprintLabel()
                 Text("\(name).")
                     .font(.system(size: 26, weight: .heavy))
                     .foregroundStyle(Theme.Colors.textPrimary)
@@ -200,9 +198,7 @@ struct ContentView: View {
 
     private func weekLabel(_ text: String) -> some View {
         Text(text)
-            .font(Theme.Typography.label)
-            .tracking(Theme.Typography.labelTracking)
-            .foregroundStyle(Theme.Colors.textSecondary)
+            .paceprintLabel()
     }
 
     @ViewBuilder
@@ -231,9 +227,7 @@ private struct LatestRunCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("LAST RUN · \(RunFormat.cardDate(run.startDate))")
-                .font(Theme.Typography.label)
-                .tracking(Theme.Typography.labelTracking)
-                .foregroundStyle(Theme.Colors.textSecondary)
+                .paceprintLabel()
             Text(run.placeNameShown)
                 .font(.system(size: 17, weight: .bold))
                 .lineLimit(1)

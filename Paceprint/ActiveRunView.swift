@@ -26,17 +26,21 @@ struct ActiveRunView: View {
 
                 Spacer()
 
-                Metric(label: units.abbreviation, value: RunFormat.distance(recorder.distance, in: units), size: .hero)
-
                 // Time-based values are read from the recorder's clock; redraw them every second.
                 TimelineView(.periodic(from: .now, by: 1)) { _ in
-                    VStack(spacing: 32) {
-                        Metric(label: "TIME", value: RunFormat.time(recorder.movingTime), size: .lg)
-                        HStack(spacing: 48) {
-                            Metric(label: "PACE", value: RunFormat.pace(recorder.currentPace, per: units), size: .md)
-                            Metric(label: "AVG PACE", value: RunFormat.pace(recorder.averagePace, per: units), size: .md)
+                    VStack(spacing: 40) {
+                        Metric(label: units.abbreviation, value: RunFormat.distance(recorder.distance, in: units), size: .hero)
+                        VStack(spacing: 32) {
+                            Metric(label: "TIME", value: RunFormat.time(recorder.movingTime), size: .lg)
+                            HStack(spacing: 48) {
+                                Metric(label: "PACE", value: RunFormat.pace(recorder.currentPace, per: units), size: .md)
+                                Metric(label: "AVG PACE", value: RunFormat.pace(recorder.averagePace, per: units), size: .md)
+                            }
                         }
                     }
+                    // One element, read when focused; never re-announced as the numbers change.
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(SpokenFormat.activeRun(distance: recorder.distance, movingTime: recorder.movingTime, pace: recorder.currentPace, units: units))
                 }
 
                 Spacer()
@@ -44,7 +48,7 @@ struct ActiveRunView: View {
                 HStack(spacing: 32) {
                     if recorder.isPaused {
                         // Dimmed while location access is off; tapping it then says why it won't Resume.
-                        RoundButton(title: "RESUME", color: Theme.Colors.actionWhite, textColor: Theme.Colors.textOnLight) {
+                        RoundButton(title: "RESUME", label: "Resume run", color: Theme.Colors.actionWhite, textColor: Theme.Colors.textOnLight) {
                             if recorder.isAccessLost {
                                 isShowingAccessLost = true
                             } else {
@@ -53,15 +57,31 @@ struct ActiveRunView: View {
                         }
                         .opacity(recorder.isAccessLost ? 0.4 : 1)
                     } else {
-                        RoundButton(title: "PAUSE", color: Theme.Colors.pauseAmber, textColor: Theme.Colors.textOnLight) {
+                        RoundButton(title: "PAUSE", label: "Pause run", color: Theme.Colors.pauseAmber, textColor: Theme.Colors.textOnLight) {
                             recorder.pause()
                         }
                     }
-                    RoundButton(title: "STOP", color: Theme.Colors.liveRed, textColor: Theme.Colors.textPrimary) {
+                    RoundButton(title: "STOP", label: "Stop run", color: Theme.Colors.liveRed, textColor: Theme.Colors.textPrimary) {
                         recorder.stop()
                     }
                 }
                 .padding(.bottom, 24)
+            }
+        }
+        // Grouped with the photo screens (#15): labels scale up to XXXL.
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        // Said aloud only while VoiceOver is on.
+        .onChange(of: completedSplits) { before, after in
+            guard after > before, let split = recorder.splits(per: units).last(where: { !$0.isPartial }) else { return }
+            VoiceOverAnnouncement.post(SpokenFormat.splitCompleted(split, units: units))
+        }
+        .onChange(of: recorder.isPaused) { _, isPaused in
+            if !isPaused {
+                VoiceOverAnnouncement.post("Resumed")
+            } else if recorder.isAccessLost {
+                VoiceOverAnnouncement.post("Paused. Location access was turned off.")
+            } else {
+                VoiceOverAnnouncement.post("Paused")
             }
         }
         .alert("Discard this run?", isPresented: Bindable(recorder).isAskingToDiscard) {
@@ -79,6 +99,11 @@ struct ActiveRunView: View {
             Text(Self.accessLostMessage)
         }
         .preferredColorScheme(.dark)
+    }
+
+    /// Whole Splits completed so far, in the units shown.
+    private var completedSplits: Int {
+        Int(recorder.distance / units.metresPerUnit)
     }
 
     private var accessLostBanner: some View {
@@ -114,11 +139,18 @@ private struct GPSPill: View {
             .opacity(text == nil ? 0 : 1)
             .accessibilityHidden(text == nil)
             .padding(.top, 8)
+            .onChange(of: status == .weak) { _, isWeak in
+                if isWeak {
+                    VoiceOverAnnouncement.post("Weak GPS")
+                }
+            }
     }
 }
 
 private struct RoundButton: View {
     let title: String
+    /// What VoiceOver says, e.g. "Pause run".
+    let label: String
     let color: Color
     let textColor: Color
     let action: () -> Void
@@ -132,6 +164,7 @@ private struct RoundButton: View {
                 .frame(width: 104, height: 104)
                 .background(color, in: Circle())
         }
+        .accessibilityLabel(label)
     }
 }
 

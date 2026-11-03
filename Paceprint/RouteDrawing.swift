@@ -95,6 +95,7 @@ struct RouteDrawing {
 /// with red start and green finish dots, fitted into the space it's given.
 struct RouteOverlay: View {
     let run: Run
+    @AppStorage(SettingsKey.units) private var units = DistanceUnit.kilometers
     /// Worked out once the overlay appears; nil until then, or if the Route has nothing to draw.
     @State private var route: RouteDrawing?
 
@@ -103,7 +104,8 @@ struct RouteOverlay: View {
             route?.draw(in: context, fittedInto: CGRect(origin: .zero, size: size).insetBy(dx: RouteDrawing.haloInset, dy: RouteDrawing.haloInset))
         }
         .allowsHitTesting(false)
-        .accessibilityHidden(true)
+        .accessibilityElement()
+        .accessibilityLabel(SpokenFormat.routeMap(distance: run.distance, startingIn: run.placeName, units: units))
         .task {
             route = RouteDrawing(run, palette: .selected)
         }

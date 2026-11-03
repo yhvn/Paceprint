@@ -54,6 +54,8 @@ struct SummaryView: View {
         }
         .overlay(alignment: .topTrailing) { photoButton }
         .preferredColorScheme(.dark)
+        // A photo screen: labels scale up to XXXL.
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .onChange(of: pickedPhoto) { _, item in
             guard let item else { return }
             Task { await usePhoto(item) }
@@ -104,9 +106,7 @@ struct SummaryView: View {
             CircleButton(systemImage: "xmark", label: "Close") { dismiss() }
             Spacer()
             Text("PACEPRINT")
-                .font(Theme.Typography.label)
-                .tracking(Theme.Typography.wordmarkTracking)
-                .foregroundStyle(Theme.Colors.textSecondary)
+                .paceprintLabel(tracking: Theme.Typography.wordmarkTracking)
             Spacer()
             CircleButton(systemImage: "square.and.arrow.up", label: "Share") { isSharing = true }
         }

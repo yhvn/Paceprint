@@ -85,18 +85,29 @@ struct ScrimGradient: View {
     var startPoint = UnitPoint.top
     var endPoint = UnitPoint.bottom
     let scrim: Scrim
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.isStoryCard) private var isStoryCard
+
+    /// Increase Contrast darkens every stop this much further (not on the Story card).
+    private static let increasedContrastDarkening = 0.2
 
     var body: some View {
         ZStack {
             Color.black.opacity(scrim.dim)
             LinearGradient(
-                stops: stops.map { .init(color: $0.color.opacity(scrim.darkened($0.opacity)), location: $0.location) },
+                stops: stops.map { .init(color: $0.color.opacity(opacity($0)), location: $0.location) },
                 startPoint: startPoint,
                 endPoint: endPoint
             )
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
+    }
+
+    private func opacity(_ stop: Stop) -> Double {
+        let darkened = scrim.darkened(stop.opacity)
+        guard contrast == .increased, !isStoryCard else { return darkened }
+        return min(1, darkened + Self.increasedContrastDarkening)
     }
 }
 
