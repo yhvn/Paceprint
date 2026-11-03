@@ -29,15 +29,6 @@ struct RunFormatTests {
         #expect(RunFormat.pace(Pace(secondsPerMetre: 0.3), per: .miles) == "8:03")
     }
 
-    @Test("Body weight is shown and entered in kg with kilometres, lb with miles")
-    func bodyMass() {
-        #expect(BodyMassUnit(.kilometers) == .kilograms)
-        #expect(BodyMassUnit(.miles) == .pounds)
-        #expect(abs(BodyMassUnit.pounds.value(ofKilograms: 70) - 154.32) < 0.01)
-        #expect(abs(BodyMassUnit.pounds.kilograms(154.32) - 70) < 0.01)
-        #expect(BodyMassUnit.kilograms.kilograms(72.4) == 72.4)
-    }
-
     @Test("A History month header spells out the month, with its year")
     func monthHeader() {
         #expect(RunFormat.monthHeader(noon(2026, 5, 1)) == "MAY 2026")

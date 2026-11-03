@@ -21,30 +21,12 @@ extension UserDefaults {
     }
 }
 
-/// Body weight is shown and entered in kilograms with kilometres, pounds with miles.
-enum BodyMassUnit: Equatable {
-    case kilograms, pounds
-
-    static let kilogramsPerPound = 0.45359237
-
-    init(_ units: DistanceUnit) {
-        self = units == .miles ? .pounds : .kilograms
-    }
-
+extension BodyMassUnit {
+    /// As shown beside a body weight: "kg" or "lb".
     var abbreviation: String {
         switch self {
         case .kilograms: "kg"
         case .pounds: "lb"
         }
-    }
-
-    /// `kilograms` in this unit.
-    func value(ofKilograms kilograms: Double) -> Double {
-        self == .pounds ? kilograms / Self.kilogramsPerPound : kilograms
-    }
-
-    /// `value` in this unit, in kilograms.
-    func kilograms(_ value: Double) -> Double {
-        self == .pounds ? value * Self.kilogramsPerPound : value
     }
 }

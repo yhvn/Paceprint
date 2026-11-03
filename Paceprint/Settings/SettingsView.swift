@@ -8,14 +8,19 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.routePalette) private var palette = RoutePalette.pace
     /// Kilograms whatever the units; 0 when not set.
     @AppStorage(SettingsKey.bodyMass) private var bodyMass = 0.0
-    /// The decimal pad has no return key: Done above it puts it away.
-    @FocusState private var isEditingBodyMass: Bool
+    /// The field being typed in; Done above the keyboard puts it away (the decimal pad has no return key).
+    @FocusState private var focus: Field?
+
+    private enum Field {
+        case name, bodyMass
+    }
 
     var body: some View {
         Form {
             Section {
                 TextField("Your name", text: $name)
                     .textContentType(.givenName)
+                    .focused($focus, equals: .name)
                     .autocorrectionDisabled()
             } header: {
                 Text("Name")
@@ -59,12 +64,15 @@ struct SettingsView: View {
                     Spacer()
                     TextField("Not set", value: bodyMassShown, format: .number.precision(.fractionLength(0...1)))
                         .keyboardType(.decimalPad)
-                        .focused($isEditingBodyMass)
+                        .focused($focus, equals: .bodyMass)
                         .multilineTextAlignment(.trailing)
                         .frame(maxWidth: 100)
                     Text(massUnit.abbreviation)
                         .foregroundStyle(Theme.Colors.textSecondary)
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Body weight")
+                .accessibilityValue(bodyMassShown.wrappedValue.map { "\($0.formatted(.number.precision(.fractionLength(0...1)))) \(massUnit.abbreviation)" } ?? "Not set")
             } footer: {
                 Text("Used to estimate CAL (EST). Changing it doesn't change past runs.")
             }
@@ -73,7 +81,7 @@ struct SettingsView: View {
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
-                Button("Done") { isEditingBodyMass = false }
+                Button("Done") { focus = nil }
             }
         }
         .navigationTitle("Settings")
@@ -83,14 +91,24 @@ struct SettingsView: View {
     }
 
     private var massUnit: BodyMassUnit {
-        BodyMassUnit(units)
+        units.bodyMassUnit
     }
 
-    /// The body weight in kg or lb by units; nil when not set. Cleared, it's not set.
+    /// The body weight in kg or lb by units; nil when not set. Cleared or 0, it's not set; a weight
+    /// no runner could have is ignored.
     private var bodyMassShown: Binding<Double?> {
         Binding(
             get: { bodyMass > 0 ? massUnit.value(ofKilograms: bodyMass) : nil },
-            set: { bodyMass = $0.map(massUnit.kilograms).flatMap { $0 > 0 ? $0 : nil } ?? 0 }
+            set: { value in
+                guard let value, value > 0 else {
+                    bodyMass = 0
+                    return
+                }
+                let kilograms = massUnit.kilograms(value)
+                if BodyMassUnit.isPlausible(kilograms: kilograms) {
+                    bodyMass = kilograms
+                }
+            }
         )
     }
 }

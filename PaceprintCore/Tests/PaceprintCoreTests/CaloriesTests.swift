@@ -37,6 +37,18 @@ struct CaloriesTests {
         #expect(calories == 80)
     }
 
+    @Test("Walking or running is judged over about 100 m, not each GPS step, so jitter doesn't halve a run")
+    func judgedOverStretches() {
+        // 2 km at 9 km/h on average, each 10 m step alternating 5 s and 3 s: half the steps alone look like walking.
+        let points = stride(from: 0.0, through: 2_000, by: 10).map { metres -> RoutePoint in
+            let steps = Int(metres / 10)
+            let seconds = Double(steps / 2) * 8 + (steps % 2 == 1 ? 5 : 0)
+            return RoutePoint(timestamp: start + seconds, latitude: 40.78 + metres / 111_195, longitude: -73.966, altitude: 30, horizontalAccuracy: 5, cumulativeDistance: metres, isPaused: false)
+        }
+
+        #expect(Calories.activeKilocalories(route: points, pauses: [], bodyMass: 70) == 140)
+    }
+
     @Test("Nothing is burned across a Pause, however far the gap")
     func pause() {
         // 1 km, a 10-minute Pause during which the runner is driven 3 km, then 1 km more.
