@@ -48,6 +48,38 @@ struct RouteDrawing {
         }
     }
 
+    /// The stretch of map that fills `size` with the Route fitted into `band` the way `projection(into:)`
+    /// fits it, so a map drawn behind it puts the Route on its own streets.
+    func mapRect(fitting band: CGRect, in size: CGSize) -> MKMapRect {
+        let scale = min(band.width / bounds.width, band.height / bounds.height)
+        return MKMapRect(
+            x: bounds.midX - band.midX / scale,
+            y: bounds.midY - band.midY / scale,
+            width: size.width / scale,
+            height: size.height / scale
+        )
+    }
+
+    /// Draws the Route into `context`, fitted into `rect`: a white halo under the Pace-colored pieces,
+    /// with red start and green finish dots.
+    func draw(in context: GraphicsContext, fittedInto rect: CGRect) {
+        let place = projection(into: rect)
+        func path(_ coordinates: [CLLocationCoordinate2D]) -> Path {
+            Path { $0.addLines(coordinates.map(place)) }
+        }
+        for stretch in stretches {
+            context.stroke(path(stretch), with: .color(Theme.Colors.routeHalo), style: StrokeStyle(lineWidth: 10, lineCap: .round, lineJoin: .round))
+        }
+        for piece in pieces {
+            context.stroke(path(piece.coordinates), with: .color(piece.color), style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+        }
+        for (coordinate, color) in [(start, Theme.Colors.liveRed), (end, Theme.Colors.paceFast)] {
+            let center = place(coordinate)
+            context.fill(Path(ellipseIn: CGRect(x: center.x - 9, y: center.y - 9, width: 18, height: 18)), with: .color(.white))
+            context.fill(Path(ellipseIn: CGRect(x: center.x - 6, y: center.y - 6, width: 12, height: 12)), with: .color(color))
+        }
+    }
+
     private static func bounds(of points: [MKMapPoint], atLatitude latitude: CLLocationDegrees) -> MKMapRect {
         let tight = points.reduce(MKMapRect.null) { $0.union(MKMapRect(origin: $1, size: MKMapSize(width: 0, height: 0))) }
         let minimum = 200 * MKMapPointsPerMeterAtLatitude(latitude)
@@ -65,23 +97,8 @@ struct RouteOverlay: View {
 
     var body: some View {
         Canvas { context, size in
-            guard let route else { return }
             // Inset by the halo's half-width, so the line isn't cut off at the edges.
-            let place = route.projection(into: CGRect(origin: .zero, size: size).insetBy(dx: 9, dy: 9))
-            func path(_ coordinates: [CLLocationCoordinate2D]) -> Path {
-                Path { $0.addLines(coordinates.map(place)) }
-            }
-            for stretch in route.stretches {
-                context.stroke(path(stretch), with: .color(Theme.Colors.routeHalo), style: StrokeStyle(lineWidth: 10, lineCap: .round, lineJoin: .round))
-            }
-            for piece in route.pieces {
-                context.stroke(path(piece.coordinates), with: .color(piece.color), style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
-            }
-            for (coordinate, color) in [(route.start, Theme.Colors.liveRed), (route.end, Theme.Colors.paceFast)] {
-                let center = place(coordinate)
-                context.fill(Path(ellipseIn: CGRect(x: center.x - 9, y: center.y - 9, width: 18, height: 18)), with: .color(.white))
-                context.fill(Path(ellipseIn: CGRect(x: center.x - 6, y: center.y - 6, width: 12, height: 12)), with: .color(color))
-            }
+            route?.draw(in: context, fittedInto: CGRect(origin: .zero, size: size).insetBy(dx: 9, dy: 9))
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)

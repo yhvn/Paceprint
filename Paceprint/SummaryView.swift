@@ -13,6 +13,7 @@ struct SummaryView: View {
     @State private var pickedPhoto: PhotosPickerItem?
     @State private var isCopyingPhoto = false
     @State private var photoFailed = false
+    @State private var isSharing = false
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Paceprint", category: "Summary")
 
     var body: some View {
@@ -52,6 +53,7 @@ struct SummaryView: View {
             guard let item else { return }
             Task { await usePhoto(item) }
         }
+        .sheet(isPresented: $isSharing) { ShareStorySheet(run: run) }
         .alert("Couldn't use that photo", isPresented: $photoFailed) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -79,8 +81,7 @@ struct SummaryView: View {
                 .tracking(Theme.Typography.wordmarkTracking)
                 .foregroundStyle(Theme.Colors.textSecondary)
             Spacer()
-            // Keeps the wordmark centred until Share takes this place.
-            Color.clear.frame(width: 36, height: 36)
+            CircleButton(systemImage: "square.and.arrow.up", label: "Share") { isSharing = true }
         }
         .padding(.top, 8)
     }
@@ -123,9 +124,8 @@ struct SummaryView: View {
     }
 
     private func choose(_ filter: PhotoFilter) {
-        run.photoFilter = filter
         do {
-            try modelContext.save()
+            try modelContext.setFilter(filter, of: run)
         } catch {
             logger.error("Couldn't save the filter: \(error)")
         }

@@ -136,6 +136,12 @@ extension ModelContext {
         if let old = replaced.fileName { store.delete(old) }
     }
 
+    /// Draws `run`'s photo with `filter` from now on, saved at once.
+    func setFilter(_ filter: PhotoFilter, of run: Run) throws {
+        run.photoFilter = filter
+        try save()
+    }
+
     /// Deletes `run` for good, with its photo.
     func deleteRun(_ run: Run, in store: RunPhotoStore = .shared) throws {
         let photo = run.photoFileName

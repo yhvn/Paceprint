@@ -8,6 +8,7 @@ struct RunDetailView: View {
     @Environment(\.dismiss) private var dismiss
     /// Cut from the Route each time the screen appears, in the units shown.
     @State private var splits: [Split] = []
+    @State private var isSharing = false
 
     @AppStorage(SettingsKey.units) private var unit = DistanceUnit.kilometers
     private let palette = RoutePalette.selected
@@ -40,6 +41,7 @@ struct RunDetailView: View {
         .overlay(alignment: .top) { topBar }
         .background(Theme.Colors.inkBlack)
         .preferredColorScheme(.dark)
+        .sheet(isPresented: $isSharing) { ShareStorySheet(run: run) }
         // Re-cut whenever the units change.
         .task(id: unit) {
             splits = (try? run.resumedTracker().splits(per: unit, until: run.endDate)) ?? []
@@ -78,8 +80,7 @@ struct RunDetailView: View {
                 .tracking(Theme.Typography.wordmarkTracking)
                 .foregroundStyle(Theme.Colors.textSecondary)
             Spacer()
-            // Keeps the title centred until Share takes this place.
-            Color.clear.frame(width: 36, height: 36)
+            CircleButton(systemImage: "square.and.arrow.up", label: "Share") { isSharing = true }
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)

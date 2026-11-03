@@ -6,6 +6,8 @@ import SwiftUI
 struct RunHeadline: View {
     let run: Run
     let font: Font
+    /// Lines the Place name may take before it shrinks to fit.
+    var nameLines = 2
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -19,8 +21,8 @@ struct RunHeadline: View {
             Text(run.placeNameShown)
                 .font(font)
                 .foregroundStyle(Theme.Colors.textPrimary)
-                .lineLimit(2)
-                .minimumScaleFactor(0.6)
+                .lineLimit(nameLines)
+                .minimumScaleFactor(0.5)
                 .shadow(color: .black.opacity(0.4), radius: 6, y: 2)
             Text(run.startDate.formatted(.dateTime.day().month(.abbreviated).year().hour().minute()).uppercased())
                 .font(Theme.Typography.label)
