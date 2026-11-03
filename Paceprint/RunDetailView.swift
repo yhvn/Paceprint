@@ -25,7 +25,7 @@ struct RunDetailView: View {
                         RunMetrics(run: run, large: .lg, small: .md)
                             .padding(.top, 28)
                     }
-                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                    .photoScreenTextSize()
                     // A chart needs two whole Splits to draw a line.
                     if wholeSplits.count >= 2 {
                         paceChart
@@ -43,7 +43,7 @@ struct RunDetailView: View {
         }
         .scrollIndicators(.hidden)
         .ignoresSafeArea(edges: .top)
-        .overlay(alignment: .top) { topBar.dynamicTypeSize(...DynamicTypeSize.xxxLarge) }
+        .overlay(alignment: .top) { topBar.photoScreenTextSize() }
         .background(Theme.Colors.inkBlack)
         .preferredColorScheme(.dark)
         .sheet(isPresented: $isSharing) { ShareStorySheet(run: run) }
@@ -151,8 +151,8 @@ struct RunDetailView: View {
                             .stroke(paceColor(split), lineWidth: 1.5)
                             .frame(width: 6, height: 6)
                     }
-                    .accessibilityLabel("\(unit.spokenName.capitalized) \(split.number)")
-                    .accessibilityValue("\(RunFormat.pace(split.pace, per: unit)) per \(unit.spokenName)")
+                    .accessibilityLabel(SpokenFormat.splitName(split.number, units: unit))
+                    .accessibilityValue(SpokenFormat.pace(split.pace, per: unit))
             }
             .chartXAxis(.hidden)
             .chartYAxis(.hidden)
@@ -161,7 +161,7 @@ struct RunDetailView: View {
             .frame(height: 110)
             .accessibilityLabel("Pace by \(unit.spokenName)")
             // An Audio Graph: VoiceOver can play the Splits' Paces as tones.
-            .accessibilityChartDescriptor(PaceChartDescriptor(splits: wholeSplits, unit: unit))
+            .accessibilityChartDescriptor(PaceChartDescriptor(splits: wholeSplits, unit: unit, paceRange: paceRange))
         }
     }
 
@@ -242,23 +242,25 @@ struct RunDetailView: View {
 private struct PaceChartDescriptor: AXChartDescriptorRepresentable {
     let splits: [Split]
     let unit: DistanceUnit
+    /// As drawn: never a range of zero.
+    let paceRange: ClosedRange<Double>
 
     func makeChartDescriptor() -> AXChartDescriptor {
         let paces = splits.map { $0.pace.seconds(per: unit) }
         let xAxis = AXCategoricalDataAxisDescriptor(
             title: unit.spokenName.capitalized,
-            categoryOrder: splits.map { "\(unit.spokenName.capitalized) \($0.number)" }
+            categoryOrder: splits.map { SpokenFormat.splitName($0.number, units: unit) }
         )
         let yAxis = AXNumericDataAxisDescriptor(
             title: "Pace",
-            range: (paces.min() ?? 0)...(paces.max() ?? 1),
+            range: paceRange,
             gridlinePositions: []
-        ) { SpokenFormat.duration($0) + " per \(unit.spokenName)" }
+        ) { SpokenFormat.pace(Pace(secondsPerMetre: $0 / unit.metresPerUnit), per: unit) }
         let series = AXDataSeriesDescriptor(
             name: "Pace by \(unit.spokenName)",
             isContinuous: false,
             dataPoints: zip(splits, paces).map { split, pace in
-                AXDataPoint(x: "\(unit.spokenName.capitalized) \(split.number)", y: pace)
+                AXDataPoint(x: SpokenFormat.splitName(split.number, units: unit), y: pace)
             }
         )
         return AXChartDescriptor(

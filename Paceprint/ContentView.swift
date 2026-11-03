@@ -49,7 +49,7 @@ struct ContentView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             // A photo screen: labels scale up to XXXL. History and Settings, pushed above it, take every size.
-            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+            .photoScreenTextSize()
         }
         .fullScreenCover(item: $openRun) { RunDetailView(run: $0) }
         // Health's body weight may have changed while the app was away; Stop reads it for CAL (EST).
@@ -212,7 +212,7 @@ struct ContentView: View {
             .buttonStyle(.plain)
         } else {
             NoRunsYet(message: "Tap Run to record your first one.")
-                .frame(height: 96)
+                .frame(minHeight: 96)
                 .background(Theme.Colors.sheetDark, in: RoundedRectangle(cornerRadius: 16))
         }
     }
@@ -229,7 +229,8 @@ private struct LatestRunCard: View {
             Text("LAST RUN · \(RunFormat.cardDate(run.startDate))")
                 .paceprintLabel()
             Text(run.placeNameShown)
-                .font(.system(size: 17, weight: .bold))
+                // 17 pt at the default size, scaling with the labels around it.
+                .font(.headline.weight(.bold))
                 .lineLimit(1)
                 .foregroundStyle(Theme.Colors.textPrimary)
                 .padding(.top, 4)
@@ -245,7 +246,9 @@ private struct LatestRunCard: View {
         .padding(.vertical, 12)
         .padding(.horizontal, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: 96)
+        .frame(minHeight: 96)
+        // As tall as its text needs, never stretched to fill Home.
+        .fixedSize(horizontal: false, vertical: true)
         .background(LinearGradient(colors: [Theme.Colors.sheetMid, Theme.Colors.sheetDark], startPoint: .topLeading, endPoint: .bottomTrailing))
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.1), lineWidth: 0.5))

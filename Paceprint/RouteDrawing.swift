@@ -105,7 +105,7 @@ struct RouteOverlay: View {
         }
         .allowsHitTesting(false)
         .accessibilityElement()
-        .accessibilityLabel(SpokenFormat.routeMap(distance: run.distance, startingIn: run.placeName, units: units))
+        .accessibilityLabel(SpokenFormat.route(distance: run.distance, startingIn: run.placeName, units: units))
         .task {
             route = RouteDrawing(run, palette: .selected)
         }

@@ -40,4 +40,9 @@ struct SpokenFormatTests {
         #expect(SpokenFormat.routeMap(distance: 5_420, startingIn: "Central Park", units: .kilometers) == "Route map, 5.42 kilometres, starting in Central Park")
         #expect(SpokenFormat.routeMap(distance: 1_609.344, startingIn: nil, units: .miles) == "Route map, 1 mile")
     }
+
+    @Test("Drawn over a photo, the Route isn't called a map")
+    func routeOverPhoto() {
+        #expect(SpokenFormat.route(distance: 5_420, startingIn: "Central Park", units: .kilometers) == "Route, 5.42 kilometres, starting in Central Park")
+    }
 }

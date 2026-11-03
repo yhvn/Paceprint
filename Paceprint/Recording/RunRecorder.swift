@@ -19,9 +19,9 @@ final class RunRecorder {
     var averagePace: Pace? { tracker?.averagePace(at: now()) }
     var gpsStatus: GPSStatus { tracker?.gpsStatus(at: now()) ?? .finding }
 
-    /// The Run in progress cut into Splits of one `units` each, up to now.
-    func splits(per units: DistanceUnit) -> [Split] {
-        tracker?.splits(per: units, until: now()) ?? []
+    /// The whole Splits of one `units` each completed so far in the Run in progress.
+    func wholeSplits(per units: DistanceUnit) -> [Split] {
+        (tracker?.splits(per: units, until: now()) ?? []).filter { !$0.isPartial }
     }
 
     /// Why the last Start didn't start a Run; the screen clears it once it has said so.

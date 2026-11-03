@@ -69,11 +69,13 @@ struct ActiveRunView: View {
             }
         }
         // Grouped with the photo screens (#15): labels scale up to XXXL.
-        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        .photoScreenTextSize()
         // Said aloud only while VoiceOver is on.
-        .onChange(of: completedSplits) { before, after in
-            guard after > before, let split = recorder.splits(per: units).last(where: { !$0.isPartial }) else { return }
-            VoiceOverAnnouncement.post(SpokenFormat.splitCompleted(split, units: units))
+        .onChange(of: wholeSplits.count) { before, after in
+            // Every Split completed since the last update, usually one.
+            for split in wholeSplits.dropFirst(before) where after > before {
+                VoiceOverAnnouncement.post(SpokenFormat.splitCompleted(split, units: units))
+            }
         }
         .onChange(of: recorder.isPaused) { _, isPaused in
             if !isPaused {
@@ -101,9 +103,9 @@ struct ActiveRunView: View {
         .preferredColorScheme(.dark)
     }
 
-    /// Whole Splits completed so far, in the units shown.
-    private var completedSplits: Int {
-        Int(recorder.distance / units.metresPerUnit)
+    /// Whole Splits completed so far, in the units shown; cut by PaceprintCore, as Run detail cuts them.
+    private var wholeSplits: [Split] {
+        recorder.wholeSplits(per: units)
     }
 
     private var accessLostBanner: some View {
@@ -121,6 +123,9 @@ struct ActiveRunView: View {
 /// "Finding GPS…" until the first point is kept, "Weak GPS" when points stop coming; nothing otherwise.
 private struct GPSPill: View {
     let status: GPSStatus
+    /// "Weak GPS" is said at most this often, so a patchy signal doesn't keep repeating it.
+    private static let weakAnnouncementInterval: TimeInterval = 60
+    @State private var lastWeakAnnouncement: Date?
 
     var body: some View {
         let text: String? = switch status {
@@ -140,9 +145,9 @@ private struct GPSPill: View {
             .accessibilityHidden(text == nil)
             .padding(.top, 8)
             .onChange(of: status == .weak) { _, isWeak in
-                if isWeak {
-                    VoiceOverAnnouncement.post("Weak GPS")
-                }
+                guard isWeak, lastWeakAnnouncement.map({ Date.now.timeIntervalSince($0) >= Self.weakAnnouncementInterval }) ?? true else { return }
+                lastWeakAnnouncement = .now
+                VoiceOverAnnouncement.post("Weak GPS")
             }
     }
 }

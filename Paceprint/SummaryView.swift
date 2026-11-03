@@ -55,7 +55,7 @@ struct SummaryView: View {
         .overlay(alignment: .topTrailing) { photoButton }
         .preferredColorScheme(.dark)
         // A photo screen: labels scale up to XXXL.
-        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        .photoScreenTextSize()
         .onChange(of: pickedPhoto) { _, item in
             guard let item else { return }
             Task { await usePhoto(item) }
