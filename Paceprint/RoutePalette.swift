@@ -2,12 +2,14 @@ import PaceprintCore
 import SwiftUI
 
 /// The colors a Route's Pace colors are drawn in: a fast, a middle (the Average pace) and a slow
-/// color, blended in between. Settings will let the runner pick one of the four.
-enum RoutePalette: CaseIterable {
+/// color, blended in between. The runner picks one of the four in Settings.
+enum RoutePalette: String, CaseIterable {
     case pace, electric, ember, mono
 
-    /// The palette Routes are drawn in until Settings lets the runner choose.
-    static let selected = RoutePalette.pace
+    /// The palette chosen in Settings, else the pace palette.
+    static var selected: RoutePalette {
+        UserDefaults.standard.string(forKey: SettingsKey.routePalette).flatMap(RoutePalette.init) ?? .pace
+    }
 
     private var colors: (fast: UInt32, middle: UInt32, slow: UInt32) {
         switch self {
@@ -16,6 +18,16 @@ enum RoutePalette: CaseIterable {
         case .ember: (0xFFD66B, 0xFF8A3D, 0xE0345B)
         case .mono: (0xFFFFFF, 0xB8B8B8, 0x5A5A5A)
         }
+    }
+
+    /// As Settings lists it, e.g. "Electric".
+    var name: String {
+        rawValue.capitalized
+    }
+
+    /// Fast, middle and slow, for a swatch.
+    var swatch: [Color] {
+        [PaceColor(position: 0), .average, PaceColor(position: 1)].map(color)
     }
 
     /// `paceColor` in this palette: fast to middle over its first half, middle to slow over its second.

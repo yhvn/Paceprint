@@ -10,6 +10,7 @@ struct HistoryView: View {
     @Query(filter: Run.finished, sort: \Run.startDate, order: .reverse) private var runs: [Run]
     @State private var openRun: Run?
     @State private var runToDelete: Run?
+    @AppStorage(SettingsKey.units) private var units = DistanceUnit.kilometers
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Paceprint", category: "History")
 
     var body: some View {
@@ -72,9 +73,9 @@ struct HistoryView: View {
     private var totals: some View {
         let totals = RunTotals(runs)
         return HStack(spacing: 12) {
-            TotalTile(label: "TOTAL", value: RunFormat.kilometres(totals.distance), unit: "KM")
+            TotalTile(label: "TOTAL", value: RunFormat.distance(totals.distance, in: units), unit: units.abbreviation)
             TotalTile(label: "RUNS", value: "\(totals.runCount)", unit: nil)
-            TotalTile(label: "AVG PACE", value: RunFormat.pace(totals.averagePace), unit: "/KM")
+            TotalTile(label: "AVG PACE", value: RunFormat.pace(totals.averagePace, per: units), unit: "/\(units.abbreviation)")
         }
     }
 
@@ -125,6 +126,7 @@ private struct TotalTile: View {
 /// No Route: History never decodes one (ADR 0001).
 private struct HistoryCard: View {
     let run: Run
+    @AppStorage(SettingsKey.units) private var units = DistanceUnit.kilometers
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -142,9 +144,9 @@ private struct HistoryCard: View {
                 .padding(.top, 4)
             Spacer(minLength: 12)
             HStack(alignment: .firstTextBaseline, spacing: 18) {
-                CardMetric(label: "KM", value: RunFormat.kilometres(run.distance))
+                CardMetric(label: units.abbreviation, value: RunFormat.distance(run.distance, in: units))
                 CardMetric(label: "TIME", value: RunFormat.time(run.movingTime))
-                CardMetric(label: "PACE", value: RunFormat.pace(run.averagePace))
+                CardMetric(label: "PACE", value: RunFormat.pace(run.averagePace, per: units))
             }
         }
         .padding(.vertical, 14)

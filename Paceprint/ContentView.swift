@@ -15,6 +15,8 @@ struct ContentView: View {
     @Environment(\.openURL) private var openURL
     @Query(filter: Run.finished, sort: \Run.startDate, order: .reverse) private var runs: [Run]
     @State private var openRun: Run?
+    @AppStorage(SettingsKey.units) private var units = DistanceUnit.kilometers
+    @AppStorage(SettingsKey.name) private var name = ""
 
     var body: some View {
         NavigationStack {
@@ -95,10 +97,7 @@ struct ContentView: View {
 
     private var topBar: some View {
         HStack {
-            // The runner's name joins the greeting once Settings asks for it.
-            Text("Good morning.")
-                .font(.system(size: 26, weight: .heavy))
-                .foregroundStyle(Theme.Colors.textPrimary)
+            greeting
             Spacer()
             NavigationLink {
                 HistoryView()
@@ -106,9 +105,38 @@ struct ContentView: View {
                 CircleIcon(systemImage: "clock.arrow.circlepath")
             }
             .accessibilityLabel("History")
+            NavigationLink {
+                SettingsView()
+            } label: {
+                CircleIcon(systemImage: "gearshape")
+            }
+            .accessibilityLabel("Settings")
         }
         .padding(.horizontal, 4)
         .padding(.top, 8)
+    }
+
+    /// "GOOD MORNING" over the runner's name, as in the design; just "Good morning." without one.
+    @ViewBuilder
+    private var greeting: some View {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if name.isEmpty {
+            Text("Good morning.")
+                .font(.system(size: 26, weight: .heavy))
+                .foregroundStyle(Theme.Colors.textPrimary)
+        } else {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("GOOD MORNING")
+                    .font(Theme.Typography.label)
+                    .tracking(Theme.Typography.labelTracking)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                Text("\(name).")
+                    .font(.system(size: 26, weight: .heavy))
+                    .foregroundStyle(Theme.Colors.textPrimary)
+                    .lineLimit(1)
+            }
+            .accessibilityElement(children: .combine)
+        }
     }
 
     private var startButton: some View {
@@ -144,10 +172,10 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 4) {
                 weekLabel("THIS WEEK")
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(RunFormat.kilometres(totals.distance))
+                    Text(RunFormat.distance(totals.distance, in: units))
                         .font(.system(size: 28, weight: .heavy).monospacedDigit())
                         .foregroundStyle(Theme.Colors.textPrimary)
-                    weekLabel("KM")
+                    weekLabel(units.abbreviation)
                 }
             }
             .accessibilityElement(children: .combine)
@@ -190,6 +218,7 @@ struct ContentView: View {
 /// No Route: Home never decodes one (ADR 0001).
 private struct LatestRunCard: View {
     let run: Run
+    @AppStorage(SettingsKey.units) private var units = DistanceUnit.kilometers
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -204,9 +233,9 @@ private struct LatestRunCard: View {
                 .padding(.top, 4)
             Spacer(minLength: 0)
             HStack(alignment: .firstTextBaseline, spacing: 16) {
-                Text("\(RunFormat.kilometres(run.distance)) KM")
+                Text("\(RunFormat.distance(run.distance, in: units)) \(units.abbreviation)")
                 Text(RunFormat.time(run.movingTime))
-                Text("\(RunFormat.pace(run.averagePace)) /KM")
+                Text("\(RunFormat.pace(run.averagePace, per: units)) /\(units.abbreviation)")
             }
             .font(.system(size: 16, weight: .heavy).monospacedDigit())
             .foregroundStyle(Theme.Colors.textPrimary)

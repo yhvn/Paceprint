@@ -42,11 +42,20 @@ final class RunRecorder {
     @ObservationIgnored private let source: any LocationSource
     @ObservationIgnored private let modelContext: ModelContext
     @ObservationIgnored private let placeNamer: RunPlaceNamer?
+    /// The runner's body weight in kg as set now, read at Stop for CAL (EST).
+    @ObservationIgnored private let bodyMass: () -> Double?
     @ObservationIgnored private var placeNaming: Task<Void, Never>?
     @ObservationIgnored private let now: () -> Date
     @ObservationIgnored private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Paceprint", category: "RunRecorder")
 
-    init(source: any LocationSource, modelContext: ModelContext, placeNamer: RunPlaceNamer? = nil, now: @escaping () -> Date = { .now }) {
+    init(
+        source: any LocationSource,
+        modelContext: ModelContext,
+        placeNamer: RunPlaceNamer? = nil,
+        bodyMass: @escaping () -> Double? = { nil },
+        now: @escaping () -> Date = { .now }
+    ) {
+        self.bodyMass = bodyMass
         self.placeNamer = placeNamer
         self.source = source
         self.modelContext = modelContext
@@ -179,7 +188,7 @@ final class RunRecorder {
     /// Ends the Run, and any Pause it's in, and saves it, however short.
     func save() {
         guard let tracker else { return }
-        run?.finish(tracker, at: now())
+        run?.finish(tracker, at: now(), bodyMass: bodyMass())
         persist()
         stoppedRun = run
         if let run, let placeNamer {

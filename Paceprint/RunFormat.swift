@@ -1,7 +1,7 @@
 import Foundation
 import PaceprintCore
 
-/// How Run numbers read on screen. Kilometres until the units setting lands.
+/// How Run numbers read on screen, in the units chosen in Settings.
 enum RunFormat {
     /// Metres in `unit` to 2 decimals, e.g. "0.37".
     static func distance(_ metres: Double, in unit: DistanceUnit) -> String {
@@ -14,9 +14,9 @@ enum RunFormat {
         return Duration.seconds(pace.seconds(per: unit).rounded()).formatted(.time(pattern: .minuteSecond))
     }
 
-    /// Metres as kilometres to 2 decimals, e.g. "5.24".
-    static func kilometres(_ metres: Double) -> String {
-        distance(metres, in: .kilometers)
+    /// CAL (EST), e.g. "350", or "—" without a body weight.
+    static func calories(_ kilocalories: Double?) -> String {
+        kilocalories.map { Int($0).formatted() } ?? "—"
     }
 
     /// Seconds as "m:ss", or "h:mm:ss" from an hour.
@@ -25,10 +25,6 @@ enum RunFormat {
         return duration.formatted(.time(pattern: seconds >= 3_600 ? .hourMinuteSecond : .minuteSecond))
     }
 
-    /// A Pace per kilometre as "m:ss", e.g. "5:15", or "--:--" when there's none to show.
-    static func pace(_ pace: Pace?) -> String {
-        self.pace(pace, per: .kilometers)
-    }
 }
 
 extension DistanceUnit {

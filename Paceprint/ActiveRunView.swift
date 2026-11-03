@@ -6,6 +6,7 @@ struct ActiveRunView: View {
     @Environment(RunRecorder.self) private var recorder
     @Environment(\.openURL) private var openURL
     @State private var isShowingAccessLost = false
+    @AppStorage(SettingsKey.units) private var units = DistanceUnit.kilometers
 
     private static let accessLostTitle = "Location access was turned off"
     private static let accessLostMessage = "Your run is paused. Turn location back on in Settings to continue."
@@ -25,15 +26,15 @@ struct ActiveRunView: View {
 
                 Spacer()
 
-                Metric(label: "KM", value: RunFormat.kilometres(recorder.distance), size: .hero)
+                Metric(label: units.abbreviation, value: RunFormat.distance(recorder.distance, in: units), size: .hero)
 
                 // Time-based values are read from the recorder's clock; redraw them every second.
                 TimelineView(.periodic(from: .now, by: 1)) { _ in
                     VStack(spacing: 32) {
                         Metric(label: "TIME", value: RunFormat.time(recorder.movingTime), size: .lg)
                         HStack(spacing: 48) {
-                            Metric(label: "PACE", value: RunFormat.pace(recorder.currentPace), size: .md)
-                            Metric(label: "AVG PACE", value: RunFormat.pace(recorder.averagePace), size: .md)
+                            Metric(label: "PACE", value: RunFormat.pace(recorder.currentPace, per: units), size: .md)
+                            Metric(label: "AVG PACE", value: RunFormat.pace(recorder.averagePace, per: units), size: .md)
                         }
                     }
                 }
