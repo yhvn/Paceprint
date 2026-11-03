@@ -16,6 +16,7 @@ struct PaceprintApp: App {
         WindowGroup {
             ContentView()
                 .environment(appDelegate.recorder)
+                .environment(appDelegate.healthSync)
         }
         .modelContainer(appDelegate.container)
     }
@@ -26,6 +27,7 @@ struct PaceprintApp: App {
 final class AppDelegate: NSObject, UIApplicationDelegate {
     let container: ModelContainer
     let recorder: RunRecorder
+    let healthSync: RunHealthSync
     private let placeNamer: RunPlaceNamer
 
     override init() {
@@ -35,10 +37,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
             fatalError("Couldn't open the Run store: \(error)")
         }
         placeNamer = RunPlaceNamer(lookup: GeocoderPlaceLookup(), modelContext: container.mainContext)
+        healthSync = RunHealthSync(exporter: HealthKitExporter(), modelContext: container.mainContext)
         recorder = RunRecorder(
             source: LiveLocationSource(),
             modelContext: container.mainContext,
             placeNamer: placeNamer,
+            healthSync: healthSync,
             bodyMass: { UserDefaults.standard.bodyMass }
         )
     }
@@ -48,6 +52,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         recorder.recoverUnfinishedRun(relaunchedInBackground: launchOptions?[.location] != nil)
         // Places that couldn't be looked up before, e.g. offline after Stop, are tried again quietly.
         Task { [placeNamer] in await placeNamer.nameRunsAwaitingPlace() }
+        // Health's latest body weight for CAL (EST), and Runs that couldn't be saved to Health before.
+        Task { [healthSync] in
+            await healthSync.refreshBodyMass()
+            await healthSync.saveRunsAwaitingHealth()
+        }
         return true
     }
 }

@@ -82,25 +82,12 @@ struct ActiveRunView: View {
     }
 
     private var accessLostBanner: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(Self.accessLostTitle)
-                .font(.headline)
-                .foregroundStyle(Theme.Colors.textPrimary)
-            Text(Self.accessLostMessage)
-                .font(.subheadline)
-                .foregroundStyle(Theme.Colors.textSecondary)
-            HStack(spacing: 20) {
-                Button("Open Settings") { openURL(.appSettings) }
-                    .foregroundStyle(Theme.Colors.info)
-                Button("Stop run") { recorder.stop() }
-                    .foregroundStyle(Theme.Colors.error)
-            }
-            .font(.subheadline.weight(.semibold))
+        NoticeCard(title: Self.accessLostTitle, message: Self.accessLostMessage) {
+            Button("Open Settings") { openURL(.appSettings) }
+                .foregroundStyle(Theme.Colors.info)
+            Button("Stop run") { recorder.stop() }
+                .foregroundStyle(Theme.Colors.error)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(Theme.Colors.glass, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.Colors.glassBorder))
         .padding(.horizontal, 16)
         .padding(.top, 8)
     }

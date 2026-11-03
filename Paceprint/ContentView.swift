@@ -13,6 +13,8 @@ import SwiftUI
 struct ContentView: View {
     @Environment(RunRecorder.self) private var recorder
     @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(RunHealthSync.self) private var healthSync
     @Query(filter: Run.finished, sort: \Run.startDate, order: .reverse) private var runs: [Run]
     @State private var openRun: Run?
     @AppStorage(SettingsKey.units) private var units = DistanceUnit.kilometers
@@ -50,6 +52,12 @@ struct ContentView: View {
             .toolbar(.hidden, for: .navigationBar)
         }
         .fullScreenCover(item: $openRun) { RunDetailView(run: $0) }
+        // Health's body weight may have changed while the app was away; Stop reads it for CAL (EST).
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                Task { await healthSync.refreshBodyMass() }
+            }
+        }
         .alert(
             recorder.startProblem?.title ?? "",
             isPresented: Binding(get: { recorder.startProblem != nil }, set: { if !$0 { recorder.startProblem = nil } }),
@@ -254,5 +262,6 @@ private struct LatestRunCard: View {
 #Preview {
     ContentView()
         .environment(RunRecorder.preview)
+        .environment(RunHealthSync.preview)
         .modelContainer(for: Run.self, inMemory: true)
 }

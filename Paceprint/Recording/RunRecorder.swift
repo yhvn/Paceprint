@@ -45,6 +45,8 @@ final class RunRecorder {
     /// The runner's body weight in kg as set now, read at Stop for CAL (EST).
     @ObservationIgnored private let bodyMass: () -> Double?
     @ObservationIgnored private var placeNaming: Task<Void, Never>?
+    @ObservationIgnored private let healthSync: RunHealthSync?
+    @ObservationIgnored private var healthSaving: Task<Void, Never>?
     @ObservationIgnored private let now: () -> Date
     @ObservationIgnored private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Paceprint", category: "RunRecorder")
 
@@ -52,11 +54,13 @@ final class RunRecorder {
         source: any LocationSource,
         modelContext: ModelContext,
         placeNamer: RunPlaceNamer? = nil,
+        healthSync: RunHealthSync? = nil,
         bodyMass: @escaping () -> Double? = { nil },
         now: @escaping () -> Date = { .now }
     ) {
         self.bodyMass = bodyMass
         self.placeNamer = placeNamer
+        self.healthSync = healthSync
         self.source = source
         self.modelContext = modelContext
         self.now = now
@@ -194,6 +198,9 @@ final class RunRecorder {
         if let run, let placeNamer {
             placeNaming = Task { await placeNamer.name(run) }
         }
+        if let run, let healthSync {
+            healthSaving = Task { await healthSync.save(run) }
+        }
         end()
     }
 
@@ -228,6 +235,11 @@ final class RunRecorder {
     /// Waits until the Run just stopped has had its place looked up.
     func waitUntilPlaceIsNamed() async {
         await placeNaming?.value
+    }
+
+    /// Waits until the Run just stopped has been saved to Apple Health, if Health is on.
+    func waitUntilSavedToHealth() async {
+        await healthSaving?.value
     }
 
     /// Waits until the location source runs out of fixes. Only a replayed source ever does.
