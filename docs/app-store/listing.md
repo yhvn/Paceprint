@@ -11,8 +11,8 @@ Draft for #33. App Store Connect limits are noted against each field; counts are
 | Age rating | 4+ |
 | Availability | All countries |
 | Privacy label | Data Not Collected |
-| Privacy policy URL | `https://<pages-host>/privacy` (public Pages repo, #33) |
-| Support URL | `https://<pages-host>/support` |
+| Privacy policy URL | https://yhvn.github.io/paceprint-site/privacy.html |
+| Support URL | https://yhvn.github.io/paceprint-site/support.html |
 | Screenshots | 6.9" iPhone only |
 
 ## Keywords (≤ 100, comma-separated, no spaces)
