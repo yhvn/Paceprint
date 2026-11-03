@@ -12,6 +12,14 @@ public struct Split: Equatable, Sendable {
     public let cumulativeMovingTime: TimeInterval
     public let isPartial: Bool
 
+    public init(number: Int, distance: Double, movingTime: TimeInterval, cumulativeMovingTime: TimeInterval, isPartial: Bool) {
+        self.number = number
+        self.distance = distance
+        self.movingTime = movingTime
+        self.cumulativeMovingTime = cumulativeMovingTime
+        self.isPartial = isPartial
+    }
+
     public var pace: Pace {
         Pace(secondsPerMetre: movingTime / distance)
     }

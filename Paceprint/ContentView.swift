@@ -30,9 +30,7 @@ struct ContentView: View {
                     topBar
                     Spacer()
                     Text("PACEPRINT")
-                        .font(Theme.Typography.label)
-                        .tracking(Theme.Typography.wordmarkTracking)
-                        .foregroundStyle(Theme.Colors.textSecondary)
+                        .paceprintLabel(tracking: Theme.Typography.wordmarkTracking)
                         .padding(.bottom, 20)
                     startButton
                     Spacer()
@@ -50,6 +48,8 @@ struct ContentView: View {
                 .padding(.bottom, 20)
             }
             .toolbar(.hidden, for: .navigationBar)
+            // A photo screen: labels scale up to XXXL. History and Settings, pushed above it, take every size.
+            .photoScreenTextSize()
         }
         .fullScreenCover(item: $openRun) { RunDetailView(run: $0) }
         // Health's body weight may have changed while the app was away; Stop reads it for CAL (EST).
@@ -135,9 +135,7 @@ struct ContentView: View {
         } else {
             VStack(alignment: .leading, spacing: 2) {
                 Text("GOOD MORNING")
-                    .font(Theme.Typography.label)
-                    .tracking(Theme.Typography.labelTracking)
-                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .paceprintLabel()
                 Text("\(name).")
                     .font(.system(size: 26, weight: .heavy))
                     .foregroundStyle(Theme.Colors.textPrimary)
@@ -200,9 +198,7 @@ struct ContentView: View {
 
     private func weekLabel(_ text: String) -> some View {
         Text(text)
-            .font(Theme.Typography.label)
-            .tracking(Theme.Typography.labelTracking)
-            .foregroundStyle(Theme.Colors.textSecondary)
+            .paceprintLabel()
     }
 
     @ViewBuilder
@@ -216,7 +212,7 @@ struct ContentView: View {
             .buttonStyle(.plain)
         } else {
             NoRunsYet(message: "Tap Run to record your first one.")
-                .frame(height: 96)
+                .frame(minHeight: 96)
                 .background(Theme.Colors.sheetDark, in: RoundedRectangle(cornerRadius: 16))
         }
     }
@@ -231,11 +227,10 @@ private struct LatestRunCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("LAST RUN · \(RunFormat.cardDate(run.startDate))")
-                .font(Theme.Typography.label)
-                .tracking(Theme.Typography.labelTracking)
-                .foregroundStyle(Theme.Colors.textSecondary)
+                .paceprintLabel()
             Text(run.placeNameShown)
-                .font(.system(size: 17, weight: .bold))
+                // 17 pt at the default size, scaling with the labels around it.
+                .font(.headline.weight(.bold))
                 .lineLimit(1)
                 .foregroundStyle(Theme.Colors.textPrimary)
                 .padding(.top, 4)
@@ -251,7 +246,9 @@ private struct LatestRunCard: View {
         .padding(.vertical, 12)
         .padding(.horizontal, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: 96)
+        .frame(minHeight: 96)
+        // As tall as its text needs, never stretched to fill Home.
+        .fixedSize(horizontal: false, vertical: true)
         .background(LinearGradient(colors: [Theme.Colors.sheetMid, Theme.Colors.sheetDark], startPoint: .topLeading, endPoint: .bottomTrailing))
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.1), lineWidth: 0.5))

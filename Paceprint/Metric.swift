@@ -10,9 +10,7 @@ struct Metric: View {
     var body: some View {
         VStack(alignment: alignment, spacing: 6) {
             Text(label)
-                .font(Theme.Typography.label)
-                .tracking(Theme.Typography.labelTracking)
-                .foregroundStyle(Theme.Colors.textSecondary)
+                .paceprintLabel()
             Text(value)
                 .font(Theme.Typography.metric(size))
                 .tracking(Theme.Typography.metricTracking(size))

@@ -35,9 +35,12 @@ enum Theme {
 
         // Text
         static let textPrimary = Color.white
-        static let textSecondary = Color.white.opacity(0.65)
+        /// Small text and labels in the app: at least 70% white, so they read over photos and maps (#15).
+        static let textSecondary = Color.white.opacity(0.7)
         static let textTertiary = Color.white.opacity(0.45)
         static let textDisabled = Color.white.opacity(0.25)
+        /// Labels on the Story card, which keeps the design's look exactly.
+        static let storyCardLabel = Color.white.opacity(0.65)
         static let textOnLight = Color(hex: 0x111111)
 
         // Route (default "pace" palette)
@@ -82,7 +85,8 @@ enum Theme {
         /// Uppercase eyebrow labels (TIME, AVG PACE, dates). 11 pt is the floor
         /// set in "Accessibility of text over photos and live metrics".
         static let labelSize: CGFloat = 11
-        static let label = Font.system(size: labelSize, weight: .semibold)
+        /// 11 pt at the default text size, scaling with Dynamic Type.
+        static let label = Font.system(.caption2, weight: .semibold)
         static let labelTracking: CGFloat = labelSize * 0.2
         /// The spaced-out PACEPRINT wordmark.
         static let wordmarkTracking: CGFloat = labelSize * 0.4

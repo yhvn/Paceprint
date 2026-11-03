@@ -19,6 +19,11 @@ final class RunRecorder {
     var averagePace: Pace? { tracker?.averagePace(at: now()) }
     var gpsStatus: GPSStatus { tracker?.gpsStatus(at: now()) ?? .finding }
 
+    /// The whole Splits of one `units` each completed so far in the Run in progress.
+    func wholeSplits(per units: DistanceUnit) -> [Split] {
+        (tracker?.splits(per: units, until: now()) ?? []).filter { !$0.isPartial }
+    }
+
     /// Why the last Start didn't start a Run; the screen clears it once it has said so.
     var startProblem: LocationProblem?
     /// Location access was turned off mid-Run, so the Run is paused and can't Resume yet.

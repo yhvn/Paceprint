@@ -47,7 +47,7 @@ extension DistanceUnit {
 
 extension RunFormat {
     /// Dates read in English, like the rest of the app's words, e.g. "MAY 12".
-    private static let english = Locale(identifier: "en_US")
+    static let english = Locale(identifier: "en_US")
 
     /// A Run's date on a card, e.g. "MAY 12", with the year for past years: "MAY 12, 2025".
     static func cardDate(_ date: Date, now: Date = .now, calendar: Calendar = .current) -> String {
