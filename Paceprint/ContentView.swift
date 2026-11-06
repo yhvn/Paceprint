@@ -282,9 +282,11 @@ private struct LatestRunCard: View {
     }
 }
 
+#if DEBUG
 #Preview {
     ContentView()
         .environment(RunRecorder.preview)
         .environment(RunHealthSync.preview)
         .modelContainer(for: Run.self, inMemory: true)
 }
+#endif

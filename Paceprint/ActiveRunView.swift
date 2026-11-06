@@ -197,7 +197,9 @@ private struct RoundButton: View {
     }
 }
 
+#if DEBUG
 #Preview {
     ActiveRunView()
         .environment(RunRecorder.preview)
 }
+#endif
