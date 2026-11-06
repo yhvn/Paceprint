@@ -163,6 +163,7 @@ struct SettingsView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     NavigationStack {
         SettingsView()
@@ -170,3 +171,4 @@ struct SettingsView: View {
     .environment(RunHealthSync.preview)
     .preferredColorScheme(.dark)
 }
+#endif

@@ -194,6 +194,7 @@ private struct CardMetric: View {
     }
 }
 
+#if DEBUG
 #Preview {
     NavigationStack {
         HistoryView()
@@ -202,3 +203,4 @@ private struct CardMetric: View {
     .environment(RunHealthSync.preview)
     .preferredColorScheme(.dark)
 }
+#endif
