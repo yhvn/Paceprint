@@ -1,0 +1,6 @@
+// Build settings for the Paceprint app target.
+//
+// The Mapbox public token comes from Config/Secrets.xcconfig, which git ignores. Copy
+// Config/Secrets.example.xcconfig to it and fill in your own token; the build stops with an error
+// until you do.
+#include? "Secrets.xcconfig"

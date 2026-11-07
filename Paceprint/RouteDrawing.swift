@@ -1,4 +1,6 @@
+// MapKit for its Web Mercator math only (MKMapRect and friends), the projection Mapbox draws in too.
 import MapKit
+import MapboxMaps
 import PaceprintCore
 import SwiftUI
 
@@ -68,11 +70,16 @@ struct RouteDrawing {
     }
 
     /// Frames the Route on a map, with `roomBelow` times its height of empty map below it.
-    func camera(roomBelow: Double) -> MapCameraPosition {
+    func viewport(roomBelow: Double) -> Viewport {
         let side = max(bounds.width, bounds.height)
         let route = MKMapRect(x: bounds.midX - side / 2, y: bounds.midY - side / 2, width: side, height: side)
         let margin = side * 0.25
-        return .rect(MKMapRect(x: route.minX - margin, y: route.minY - margin, width: side + 2 * margin, height: side * (1 + roomBelow) + 2 * margin))
+        let rect = MKMapRect(x: route.minX - margin, y: route.minY - margin, width: side + 2 * margin, height: side * (1 + roomBelow) + 2 * margin)
+        let corners = [
+            MKMapPoint(x: rect.minX, y: rect.minY), MKMapPoint(x: rect.maxX, y: rect.minY),
+            MKMapPoint(x: rect.maxX, y: rect.maxY), MKMapPoint(x: rect.minX, y: rect.maxY),
+        ].map(\.coordinate)
+        return .overview(geometry: Polygon([corners + [corners[0]]]))
     }
 
     /// Where each coordinate lands when the Route is fitted into `rect`, centred, north up.

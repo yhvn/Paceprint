@@ -1,4 +1,4 @@
-import MapKit
+import MapboxMaps
 import PaceprintCore
 import SwiftUI
 
@@ -28,22 +28,14 @@ struct RouteMap: View {
     }
 
     private func map(_ route: RouteDrawing) -> some View {
-        Map(initialPosition: route.camera(roomBelow: roomBelow)) {
-            // A faint white halo under the colored pieces, so the line reads on any map.
-            ForEach(route.stretches.indices, id: \.self) { index in
-                MapPolyline(coordinates: route.stretches[index])
-                    .stroke(Theme.Colors.routeHalo, style: StrokeStyle(lineWidth: 12, lineCap: .round, lineJoin: .round))
-            }
-            ForEach(route.pieces.indices, id: \.self) { index in
-                MapPolyline(coordinates: route.pieces[index].coordinates)
-                    .stroke(route.pieces[index].color, style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
-            }
-            Annotation("Start", coordinate: route.start, anchor: .center) { EndpointDot(color: Theme.Colors.liveRed) }
-                .annotationTitles(.hidden)
-            Annotation("Finish", coordinate: route.end, anchor: .center) { EndpointDot(color: Theme.Colors.paceFast) }
-                .annotationTitles(.hidden)
+        Map(initialViewport: route.viewport(roomBelow: roomBelow)) {
+            RouteLine(route: route)
+            MapViewAnnotation(coordinate: route.start) { EndpointDot(color: Theme.Colors.liveRed) }
+                .allowOverlap(true)
+            MapViewAnnotation(coordinate: route.end) { EndpointDot(color: Theme.Colors.paceFast) }
+                .allowOverlap(true)
         }
-        .mapStyle(.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll))
-        .mapControls {}
+        .mapStyle(Mapbox.style)
+        .ornamentOptions(.paceprint())
     }
 }

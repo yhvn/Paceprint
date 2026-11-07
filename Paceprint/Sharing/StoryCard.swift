@@ -1,4 +1,6 @@
+// MapKit for its Web Mercator math only, to frame the Mapbox snapshot.
 import MapKit
+import MapboxMaps
 import os
 import PaceprintCore
 import SwiftUI
@@ -20,6 +22,8 @@ struct StoryCard: View {
         static let placeTop = 330.0
         static let metricsBottom = 48.0
         static let footerBottom = 20.0
+        /// Over the map, the footer sits higher, clear of Mapbox's logo and attribution along the bottom.
+        static let footerBottomOverMap = 34.0
     }
 
     let run: Run
@@ -40,7 +44,9 @@ struct StoryCard: View {
                     }
                     .clipped()
             }
-            ScrimGradient(stops: .storyCard, scrim: run.scrim)
+            if background?.isScrimmed != true {
+                ScrimGradient(stops: .storyCard, scrim: run.scrim)
+            }
             Canvas { context, _ in
                 route?.draw(in: context, fittedInto: Layout.routeFrame)
             }
@@ -76,7 +82,7 @@ struct StoryCard: View {
                 .font(Theme.Typography.label)
                 .tracking(Theme.Typography.wordmarkTracking * 0.75)
                 .foregroundStyle(Theme.Colors.textTertiary)
-                .padding(.bottom, Layout.footerBottom)
+                .padding(.bottom, background?.isScrimmed == true ? Layout.footerBottomOverMap : Layout.footerBottom)
                 .frame(maxHeight: .infinity, alignment: .bottom)
         }
     }
@@ -91,15 +97,18 @@ struct StoryCard: View {
 }
 
 /// What a Story card is drawn over: the Run's photo with its filter, or the dark map.
-/// A map snapshot carries Apple's Maps mark itself.
 struct StoryCardBackground {
     let image: CGImage
+    /// Whether the card's scrim is already drawn into `image`: a map's is, under Mapbox's logo and
+    /// attribution, so the card's gradient never hides them.
+    var isScrimmed = false
 
     private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Paceprint", category: "StoryCard")
 
-    /// The Run's photo with its filter; without one, or if its file can't be read, the dark muted map
+    /// The Run's photo with its filter; without one, or if its file can't be read, the night map
     /// framed so `route` lands on its streets. Nil if neither can be had, e.g. offline with no photo:
     /// the card is then plain dark. The map can only be drawn while the app is in front.
+    @MainActor
     static func load(for run: Run, route: RouteDrawing?) async -> StoryCardBackground? {
         if let fileName = run.photoFileName {
             // Decoded at the stored size, so a landscape photo filling the card's height isn't stretched.
@@ -109,20 +118,48 @@ struct StoryCardBackground {
             logger.error("Couldn't read a Run's photo for its Story card; using the map")
         }
         guard let route else { return nil }
-        let options = MKMapSnapshotter.Options()
-        options.mapRect = route.mapRect(fitting: StoryCard.Layout.routeFrame, in: StoryCard.Layout.size)
-        options.size = StoryCard.Layout.size
-        options.scale = StoryCard.Layout.scale
-        options.traitCollection = UITraitCollection(userInterfaceStyle: .dark)
-        let configuration = MKStandardMapConfiguration(elevationStyle: .flat, emphasisStyle: .muted)
-        configuration.pointOfInterestFilter = .excludingAll
-        options.preferredConfiguration = configuration
-        do {
-            guard let map = try await MKMapSnapshotter(options: options).start().image.cgImage else { return nil }
-            return StoryCardBackground(image: map)
-        } catch {
+        let size = StoryCard.Layout.size
+        let rect = route.mapRect(fitting: StoryCard.Layout.routeFrame, in: size)
+        let snapshotter = Snapshotter(options: MapSnapshotOptions(size: size, pixelRatio: StoryCard.Layout.scale))
+        snapshotter.mapStyle = Mapbox.style
+        snapshotter.setCamera(to: CameraOptions(center: MKMapPoint(x: rect.midX, y: rect.midY).coordinate, zoom: zoom(showing: rect, across: size.width)))
+        let scrim = scrimImage(for: run)
+        let result = await withCheckedContinuation { continuation in
+            snapshotter.start(overlayHandler: { overlay in
+                // Drawn after the map and before Mapbox's logo and attribution, which land on top.
+                guard let scrim else { return }
+                overlay.context.saveGState()
+                // Flipped back: the context is UIKit's, top down, and a CGImage draws bottom up.
+                overlay.context.translateBy(x: 0, y: size.height)
+                overlay.context.scaleBy(x: 1, y: -1)
+                overlay.context.draw(scrim, in: CGRect(origin: .zero, size: size))
+                overlay.context.restoreGState()
+            }, completion: { continuation.resume(returning: $0) })
+        }
+        switch result {
+        case .success(let map):
+            guard let image = map.cgImage else { return nil }
+            return StoryCardBackground(image: image, isScrimmed: scrim != nil)
+        case .failure(let error):
             logger.error("Couldn't draw the map for a Story card: \(error)")
             return nil
         }
+    }
+
+    /// The Mapbox zoom at which `rect` spans `width` points: at zoom 0 the whole world, which MapKit
+    /// measures as `MKMapSize.world.width` map points, is 512 points wide.
+    static func zoom(showing rect: MKMapRect, across width: CGFloat) -> Double {
+        log2(width / rect.width * MKMapSize.world.width / 512)
+    }
+
+    /// The card's scrim on its own, at the card's size and scale, to draw into the map.
+    @MainActor
+    private static func scrimImage(for run: Run) -> CGImage? {
+        let renderer = ImageRenderer(content: ScrimGradient(stops: .storyCard, scrim: run.scrim)
+            .frame(width: StoryCard.Layout.size.width, height: StoryCard.Layout.size.height)
+            .environment(\.colorScheme, .dark)
+            .environment(\.isStoryCard, true))
+        renderer.scale = StoryCard.Layout.scale
+        return renderer.cgImage
     }
 }
