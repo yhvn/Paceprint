@@ -89,10 +89,10 @@ struct ActiveRunView: View {
                 .accessibilityLabel(SpokenFormat.activeRun(distance: recorder.distance, movingTime: recorder.movingTime, pace: recorder.currentPace, units: units))
             }
 
-            HStack(spacing: 32) {
+            HStack(spacing: 48) {
                 if recorder.isPaused {
                     // Dimmed while location access is off; tapping it then says why it won't Resume.
-                    RoundButton(title: "RESUME", label: "Resume run", color: Theme.Colors.actionWhite, textColor: Theme.Colors.textOnLight) {
+                    RoundButton(systemImage: "play.fill", label: "Resume run", iconColor: Theme.Colors.textPrimary) {
                         if recorder.isAccessLost {
                             isShowingAccessLost = true
                         } else {
@@ -101,11 +101,11 @@ struct ActiveRunView: View {
                     }
                     .opacity(recorder.isAccessLost ? 0.4 : 1)
                 } else {
-                    RoundButton(title: "PAUSE", label: "Pause run", color: Theme.Colors.pauseAmber, textColor: Theme.Colors.textOnLight) {
+                    RoundButton(systemImage: "pause.fill", label: "Pause run", iconColor: Theme.Colors.pauseAmber) {
                         recorder.pause()
                     }
                 }
-                RoundButton(title: "STOP", label: "Stop run", color: Theme.Colors.liveRed, textColor: Theme.Colors.textPrimary) {
+                RoundButton(systemImage: "stop.fill", label: "Stop run", iconColor: Theme.Colors.liveRed) {
                     recorder.stop()
                 }
             }
@@ -176,23 +176,20 @@ private struct GPSPill: View {
     }
 }
 
+/// Pause, Resume or Stop: a glass circle like Home's History and Settings, larger, its icon in the
+/// action's color.
 private struct RoundButton: View {
-    let title: String
+    let systemImage: String
     /// What VoiceOver says, e.g. "Pause run".
     let label: String
-    let color: Color
-    let textColor: Color
+    let iconColor: Color
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Text(title)
-                .font(Theme.Typography.label)
-                .tracking(Theme.Typography.labelTracking)
-                .foregroundStyle(textColor)
-                .frame(width: 104, height: 104)
-                .background(color, in: Circle())
+            CircleIcon(systemImage: systemImage, diameter: 80, iconColor: iconColor)
         }
+        .buttonStyle(.plain)
         .accessibilityLabel(label)
     }
 }
