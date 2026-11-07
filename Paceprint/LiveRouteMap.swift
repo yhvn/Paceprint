@@ -1,4 +1,5 @@
-import MapKit
+import CoreLocation
+import MapboxMaps
 import PaceprintCore
 import SwiftUI
 
@@ -15,12 +16,12 @@ struct LiveRouteMap: View {
     @State private var route: RouteDrawing?
     @State private var routeDrawnAt: Date?
     @State private var position: CLLocationCoordinate2D?
-    @State private var camera = MapCameraPosition.automatic
+    @State private var viewport = Viewport.styleDefault
 
     /// How often the whole line is recolored.
     static let recolorInterval: TimeInterval = 5
-    /// How much of the map the camera shows around the runner, in metres from the ground.
-    static let cameraDistance: CLLocationDistance = 2_500
+    /// How close the camera is to the runner: a few blocks of streets around them.
+    static let cameraZoom = 14.5
 
     var body: some View {
         ZStack {
@@ -41,25 +42,19 @@ struct LiveRouteMap: View {
     }
 
     private func map(_ position: CLLocationCoordinate2D) -> some View {
-        Map(position: $camera, interactionModes: []) {
+        Map(viewport: $viewport) {
             if let route {
-                ForEach(route.stretches.indices, id: \.self) { index in
-                    MapPolyline(coordinates: route.stretches[index])
-                        .stroke(Theme.Colors.routeHalo, style: StrokeStyle(lineWidth: 12, lineCap: .round, lineJoin: .round))
-                }
-                ForEach(route.pieces.indices, id: \.self) { index in
-                    MapPolyline(coordinates: route.pieces[index].coordinates)
-                        .stroke(route.pieces[index].color, style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
-                }
-                Annotation("Start", coordinate: route.start, anchor: .center) { EndpointDot(color: Theme.Colors.liveRed) }
-                    .annotationTitles(.hidden)
+                RouteLine(route: route)
+                MapViewAnnotation(coordinate: route.start) { EndpointDot(color: Theme.Colors.liveRed) }
+                    .allowOverlap(true)
             }
-            Annotation("You", coordinate: position, anchor: .center) { PositionDot(isPulsing: !reduceMotion) }
-                .annotationTitles(.hidden)
+            MapViewAnnotation(coordinate: position) { PositionDot(isPulsing: !reduceMotion) }
+                .allowOverlap(true)
         }
-        .mapStyle(.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll))
-        .mapControls {}
-        .safeAreaPadding(.bottom, roomBelow)
+        .mapStyle(Mapbox.style)
+        .gestureOptions(.none)
+        // Just above the panel over the map's bottom, where they're seen and the (i) can be tapped.
+        .ornamentOptions(.paceprint(bottom: roomBelow))
     }
 
     /// Follows the runner, and redraws the line if it's due or there wasn't one yet.
@@ -69,11 +64,12 @@ struct LiveRouteMap: View {
         let coordinate = last.coordinate
         let isFirst = position == nil
         position = coordinate
-        let target = MapCameraPosition.camera(MapCamera(centerCoordinate: coordinate, distance: Self.cameraDistance))
+        // Padded so the runner sits in the middle of the map left visible above the panel.
+        let target = Viewport.camera(center: coordinate, zoom: Self.cameraZoom).padding(.bottom, roomBelow)
         if isFirst || reduceMotion {
-            camera = target
+            viewport = target
         } else {
-            withAnimation(.linear(duration: 1)) { camera = target }
+            withViewportAnimation(.linear(duration: 1)) { viewport = target }
         }
         if route == nil || routeDrawnAt.map({ now.timeIntervalSince($0) >= Self.recolorInterval }) ?? true {
             route = RouteDrawing(live: points, pauses: recorder.pauses, averagePace: recorder.averagePace, palette: palette)

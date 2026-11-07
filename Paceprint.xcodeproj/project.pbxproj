@@ -7,7 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A91F2529309E985000B5FA4F /* PaceprintCore in Frameworks */ = {isa = PBXBuildFile; productRef = A9811C1B3091E5A400080CEC /* PaceprintCore */; };
 		A9811C033091E5A400080CEC /* PaceprintCore in Frameworks */ = {isa = PBXBuildFile; productRef = A9811C023091E5A400080CEC /* PaceprintCore */; };
+		A9811D033091E5A400080CEC /* MapboxMaps in Frameworks */ = {isa = PBXBuildFile; productRef = A9811D023091E5A400080CEC /* MapboxMaps */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -21,8 +23,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		A9811C113091E5A400080CEC /* PaceprintTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PaceprintTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A9811BCF3091E5A100080CEC /* Paceprint.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Paceprint.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A9811C113091E5A400080CEC /* PaceprintTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PaceprintTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A9811D043091E5A400080CEC /* Paceprint.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Paceprint.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -57,6 +60,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A9811C033091E5A400080CEC /* PaceprintCore in Frameworks */,
+				A9811D033091E5A400080CEC /* MapboxMaps in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -64,6 +68,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A91F2529309E985000B5FA4F /* PaceprintCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -73,6 +78,7 @@
 		A9811BC63091E5A100080CEC = {
 			isa = PBXGroup;
 			children = (
+				A9811D053091E5A400080CEC /* Config */,
 				A9811BD13091E5A100080CEC /* Paceprint */,
 				A9811C123091E5A400080CEC /* PaceprintTests */,
 				A9811BD03091E5A100080CEC /* Products */,
@@ -88,6 +94,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		A9811D053091E5A400080CEC /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				A9811D043091E5A400080CEC /* Paceprint.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -95,6 +109,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = A9811BDA3091E5A300080CEC /* Build configuration list for PBXNativeTarget "Paceprint" */;
 			buildPhases = (
+				A9811D063091E5A400080CEC /* Check Mapbox token */,
 				A9811BCB3091E5A100080CEC /* Sources */,
 				A9811BCC3091E5A100080CEC /* Frameworks */,
 				A9811BCD3091E5A100080CEC /* Resources */,
@@ -109,6 +124,7 @@
 			name = Paceprint;
 			packageProductDependencies = (
 				A9811C023091E5A400080CEC /* PaceprintCore */,
+				A9811D023091E5A400080CEC /* MapboxMaps */,
 			);
 			productName = Paceprint;
 			productReference = A9811BCF3091E5A100080CEC /* Paceprint.app */;
@@ -168,6 +184,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				A9811C013091E5A400080CEC /* XCLocalSwiftPackageReference "PaceprintCore" */,
+				A9811D013091E5A400080CEC /* XCRemoteSwiftPackageReference "mapbox-maps-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A9811BD03091E5A100080CEC /* Products */;
@@ -196,6 +213,28 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		A9811D063091E5A400080CEC /* Check Mapbox token */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Check Mapbox token";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "case \"$MAPBOX_ACCESS_TOKEN\" in\n  pk.your-token-here|\"\") echo \"error: No Mapbox token. Copy Config/Secrets.example.xcconfig to Config/Secrets.xcconfig and set MAPBOX_ACCESS_TOKEN to your public token (pk.…).\"; exit 1 ;;\nesac\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		A9811BCB3091E5A100080CEC /* Sources */ = {
@@ -346,11 +385,12 @@
 		};
 		A9811BDB3091E5A300080CEC /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A9811D043091E5A400080CEC /* Paceprint.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_ENTITLEMENTS = Paceprint.entitlements;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 7VLJ3KD753;
 				ENABLE_PREVIEWS = YES;
@@ -384,11 +424,12 @@
 		};
 		A9811BDC3091E5A300080CEC /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A9811D043091E5A400080CEC /* Paceprint.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_ENTITLEMENTS = Paceprint.entitlements;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 7VLJ3KD753;
 				ENABLE_PREVIEWS = YES;
@@ -501,6 +542,17 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		A9811D013091E5A400080CEC /* XCRemoteSwiftPackageReference "mapbox-maps-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/mapbox/mapbox-maps-ios.git";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 11.30.7;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		A9811C023091E5A400080CEC /* PaceprintCore */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -509,6 +561,11 @@
 		A9811C1B3091E5A400080CEC /* PaceprintCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PaceprintCore;
+		};
+		A9811D023091E5A400080CEC /* MapboxMaps */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A9811D013091E5A400080CEC /* XCRemoteSwiftPackageReference "mapbox-maps-ios" */;
+			productName = MapboxMaps;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

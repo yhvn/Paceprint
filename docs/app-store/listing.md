@@ -10,7 +10,7 @@ Draft for #33. App Store Connect limits are noted against each field; counts are
 | Price | Free, no in-app purchases, no ads |
 | Age rating | 4+ |
 | Availability | All countries |
-| Privacy label | Data Not Collected |
+| Privacy label | Paceprint itself collects nothing. Mapbox's SDK declares Precise Location, Coarse Location and User ID (not linked to identity, not tracking), sent only if the user turns Mapbox telemetry on: declare those as collected by a third party (ADR 0005) |
 | Privacy policy URL | https://yhvn.github.io/paceprint-site/privacy.html |
 | Support URL | https://yhvn.github.io/paceprint-site/support.html |
 | Screenshots | 6.9" iPhone only |
@@ -50,7 +50,7 @@ APPLE HEALTH
 Paceprint uses Apple Health for fitness tracking. With your permission it saves each finished run to Health as a running workout, with its route, distance and active calories, so it counts toward your Activity rings. It can also read your body weight to estimate calories. Health data stays on your device: it is never sent to us, used for advertising or shared with anyone.
 
 PRIVATE BY DESIGN
-No account, no sign-up, no servers. Your runs never leave your iPhone unless you share them yourself.
+No account, no sign-up, no Paceprint servers. Your runs never leave your iPhone unless you share them yourself.
 
 Paceprint is free, with no ads and no in-app purchases. iPhone, iOS 18 or later.
 ```

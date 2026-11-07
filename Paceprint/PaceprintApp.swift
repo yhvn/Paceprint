@@ -31,6 +31,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     private let placeNamer: RunPlaceNamer
 
     override init() {
+        // Before any map is shown, so Mapbox's SDK starts with its telemetry off (ADR 0005).
+        Mapbox.turnOffTelemetryUnlessChosen()
         do {
             container = try ModelContainer(for: Run.self)
         } catch {
