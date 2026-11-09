@@ -115,16 +115,11 @@ struct SummaryView: View {
 
     /// Floats on the right, below the top bar, where the design keeps the map buttons.
     private var photoButton: some View {
-        PhotosPicker(selection: $pickedPhoto, matching: .images, photoLibrary: .shared()) {
-            ZStack {
-                CircleIcon(systemImage: run.photoFileName == nil ? "photo.badge.plus" : "photo")
-                if isCopyingPhoto {
-                    ProgressView()
-                        .tint(.white)
-                        .frame(width: 36, height: 36)
-                        .background(Theme.Colors.glass, in: Circle())
-                }
-            }
+        // PhotosPicker's label closure isn't main-actor isolated, so it gets plain values, not the view's state.
+        let hasPhoto = run.photoFileName != nil
+        let isCopying = isCopyingPhoto
+        return PhotosPicker(selection: $pickedPhoto, matching: .images, photoLibrary: .shared()) {
+            PhotoButtonLabel(hasPhoto: hasPhoto, isCopying: isCopying)
         }
         .disabled(isCopyingPhoto)
         .accessibilityLabel(run.photoFileName == nil ? "Choose a photo" : "Change photo")
@@ -170,6 +165,29 @@ nonisolated private struct PickedPhotoFile: Transferable {
             let copy = URL.temporaryDirectory.appending(path: "\(UUID().uuidString).\(received.file.pathExtension)")
             try FileManager.default.copyItem(at: received.file, to: copy)
             return PickedPhotoFile(url: copy)
+        }
+    }
+}
+
+/// The photo button's face: a photo icon, with a spinner while a picked photo is copied in.
+private struct PhotoButtonLabel: View {
+    let hasPhoto: Bool
+    let isCopying: Bool
+
+    nonisolated init(hasPhoto: Bool, isCopying: Bool) {
+        self.hasPhoto = hasPhoto
+        self.isCopying = isCopying
+    }
+
+    var body: some View {
+        ZStack {
+            CircleIcon(systemImage: hasPhoto ? "photo" : "photo.badge.plus")
+            if isCopying {
+                ProgressView()
+                    .tint(.white)
+                    .frame(width: 36, height: 36)
+                    .background(Theme.Colors.glass, in: Circle())
+            }
         }
     }
 }

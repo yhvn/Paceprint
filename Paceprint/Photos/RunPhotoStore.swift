@@ -83,7 +83,7 @@ nonisolated struct RunPhotoStore: Sendable {
     // MARK: Private
 
     /// Thread-safe; made once because it's costly.
-    nonisolated(unsafe) private static let context = CIContext()
+    private static let context = CIContext()
 
     private static func downscaled(_ source: CGImageSource, maxPixelSize: Int) -> CGImage? {
         CGImageSourceCreateThumbnailAtIndex(source, 0, [
